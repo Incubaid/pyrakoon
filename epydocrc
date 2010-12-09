@@ -1,0 +1,11 @@
+[epydoc]
+name: pyrakoon
+modules: pyrakoon
+
+docformat: restructuredtext
+
+output: html
+target: doc/_build/html/api/
+
+graph: all
+imports: yes

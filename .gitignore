@@ -1,0 +1,9 @@
+build/
+dist/
+paver-minilib.zip
+pyrakoon.egg-info/
+setup.py
+doc/_build/
+
+*.pyc
+*.pyo

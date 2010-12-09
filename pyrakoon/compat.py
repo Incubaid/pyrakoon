@@ -1,0 +1,912 @@
+# This file is part of Pyrakoon, a distributed key-value store client.
+#
+# Copyright (C) 2010 Incubaid BVBA
+#
+# Licensees holding a valid Incubaid license may use this file in
+# accordance with Incubaid's Arakoon commercial license agreement. For
+# more information on how to enter into this agreement, please contact
+# Incubaid (contact details can be found on www.arakoon.org/licensing).
+#
+# Alternatively, this file may be redistributed and/or modified under
+# the terms of the GNU Affero General Public License version 3, as
+# published by the Free Software Foundation. Under this license, this
+# file is distributed in the hope that it will be useful, but WITHOUT
+# ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
+# FITNESS FOR A PARTICULAR PURPOSE.
+#
+# See the GNU Affero General Public License for more details.
+# You should have received a copy of the
+# GNU Affero General Public License along with this program (file "COPYING").
+# If not, see <http://www.gnu.org/licenses/>.
+
+'''Compatibility layer for the original Arakoon Python client'''
+
+import time
+import random
+import select
+import socket
+import logging
+import threading
+import functools
+
+from pyrakoon import client, errors, protocol, sequence
+
+__docformat__ = 'epytext'
+
+#pylint: disable-msg=C0111,W0142,R0912,C0103,W0212,R0913,W0201,W0231,R0903
+#pylint: disable-msg=W0223,R0201,W0703
+
+# C0111: Missing docstring
+# W0142: Used * or ** magic
+# R0912: Too many branches
+# C0103: Invalid name
+# W0212: Access to a protected member
+# R0913: Too many arguments
+# W0201: Attributed defined outside __init__
+# W0231: __init__ method from base class X is not called
+# R0903: Too few public methods
+# W0223: Method X is abstract in class Y but not overridden
+# R0201: Method could be a function
+# W0703: Catch "Exception"
+
+LOGGER = logging.getLogger(__name__)
+
+def _add_handler():
+    if hasattr(logging, 'NullHandler'):
+        handler = logging.NullHandler()
+    else:
+        class NullHandler(logging.Handler):
+            def emit(self, record):
+                pass
+
+        handler = NullHandler()
+
+    LOGGER.addHandler(handler)
+
+_add_handler()
+del _add_handler
+
+
+def _validate_signature_helper(fun, *args):
+    param_native_type_mapping = {
+        'int': int,
+        'string': str,
+        'bool': bool,
+    }
+
+    def validate(arg, arg_type):
+        if arg_type in param_native_type_mapping:
+            return isinstance(arg, param_native_type_mapping[arg_type])
+        elif arg_type == 'string_option':
+            return isinstance(arg, str) or arg is None
+        elif arg_type == 'string_list':
+            return all(isinstance(value, str) for value in arg)
+        elif arg_type == 'sequence':
+            return isinstance(arg, Sequence)
+        else:
+            raise RuntimeError('Invalid argument type supplied: %s' % arg_type)
+
+    @functools.wraps(fun)
+    def wrapped(*args_, **kwargs):
+        new_args = list(args_[1:])
+        missing_args = fun.func_code.co_varnames[len(args_):]
+
+        for missing_arg in missing_args:
+            if len(new_args) == len(args):
+                break
+
+            if missing_arg in kwargs:
+                pos = fun.func_code.co_varnames.index(missing_arg)
+                new_args.insert(pos, kwargs[missing_arg])
+                del kwargs[missing_arg]
+
+        if kwargs:
+            raise ArakoonInvalidArguments(fun.func_name,
+                list(kwargs.iteritems()))
+
+        i = 0
+        error_key_values = []
+
+        for arg, arg_type in zip(new_args, args):
+            if not validate(arg, arg_type):
+                error_key_values.append(
+                    (fun.func_code.co_varnames[i + 1], new_args[i]))
+            i += 1
+
+        if error_key_values:
+            raise ArakoonInvalidArguments(fun.func_name, error_key_values)
+
+        return fun(args_[0], *new_args)
+
+    return wrapped
+
+_validate_signature = lambda *args: lambda fun: \
+    _validate_signature_helper(fun, *args)
+
+
+def _convert_exceptions(fun):
+    '''
+    Wrap a function to convert `pyrakoon` exceptions into suitable
+    `ArakoonException` instances
+    '''
+
+    @functools.wraps(fun)
+    def wrapped(*args, **kwargs):
+        try:
+            return fun(*args, **kwargs)
+        except Exception, exc:
+            new_exception = _convert_exception(exc)
+
+            if new_exception is exc:
+                raise
+
+            raise new_exception
+
+    return wrapped
+
+
+class ArakoonClient(object):
+    def __init__(self, config=None):
+        """
+        Constructor of an Arakoon client object.
+
+        It takes one optional paramater 'config'.
+        This parameter contains info on the arakoon server nodes.
+        See the constructor of L{ArakoonClientConfig} for more details.
+
+        @type config: L{ArakoonClientConfig}
+        @param config: The L{ArakoonClientConfig} object to be used by the client. Defaults to None in which
+            case a default L{ArakoonClientConfig} object will be created.
+        """
+
+        if config is None:
+            config = ArakoonClientConfig()
+
+        self._client = _ArakoonClient(config)
+
+    def _initialize(self, config):
+        raise NotImplementedError
+
+    @_convert_exceptions
+    @_validate_signature('string')
+    def hello(self, msg):
+        """
+        Send a string of your choosing to the server.
+
+        Will return the server node identifier and the version of arakoon it is running
+
+        @type msg  : string
+        @param msg : The string to send to the master node
+
+        @rtype: string
+        @return: The master identifier and its version in a single string
+        """
+
+        return self._client.hello(msg)
+
+    @_convert_exceptions
+    @_validate_signature('string')
+    def exists(self, key):
+        """
+        @type key : string
+        @param key : key
+        @return : True if there is a value for that key, False otherwise
+        """
+
+        return self._client.exists(key)
+
+    @_convert_exceptions
+    @_validate_signature('string')
+    def get(self, key):
+        """
+        Retrieve a single value from the store.
+
+        Retrieve the value associated with the given key
+
+        @type key: string
+        @param key: The key whose value you are interested in
+
+        @rtype: string
+        @return: The value associated with the given key
+        """
+
+        return self._client.get(key)
+
+    @_convert_exceptions
+    @_validate_signature('string', 'string')
+    def set(self, key, value):
+        """
+        Update the value associated with the given key.
+
+        If the key does not yet have a value associated with it, a new key value pair will be created.
+        If the key does have a value associated with it, it is overwritten.
+        For conditional value updates see L{testAndSet}
+
+        @type key: string
+        @type value: string
+        @param key: The key whose associated value you want to update
+        @param value: The value you want to store with the associated key
+
+        @rtype: void
+        """
+
+        return self._client.set(key, value)
+
+    @_convert_exceptions
+    @_validate_signature('sequence')
+    def sequence(self, seq):
+        """
+        Try to execute a sequence of updates.
+
+        It's all-or-nothing: either all updates succeed, or they all fail.
+        @type seq: Sequence
+        """
+
+        def convert_set(step):
+            return sequence.Set(step._key, step._value)
+
+        def convert_delete(step):
+            return sequence.Delete(step._key)
+
+        def convert_sequence(sequence_):
+            steps = []
+
+            for step in sequence_._updates:
+                if isinstance(step, Set):
+                    steps.append(convert_set(step))
+                elif isinstance(step, Delete):
+                    steps.append(convert_delete(step))
+                elif isinstance(step, Sequence):
+                    steps.append(convert_sequence(step))
+                else:
+                    raise TypeError
+
+            return sequence.Sequence(*steps)
+
+        return self._client.sequence((convert_sequence(seq), ))
+
+    @_convert_exceptions
+    @_validate_signature('string')
+    def delete(self, key):
+        """
+        Remove a key-value pair from the store.
+
+        @type key: string
+        @param key: Remove this key and its associated value from the store
+
+        @rtype: void
+        """
+
+        return self._client.delete(key)
+
+    __setitem__ = set
+    __getitem__ = get
+    __delitem__ = delete
+    __contains__ = exists
+
+    @_convert_exceptions
+    @_validate_signature('string_option', 'bool', 'string_option', 'bool',
+        'int')
+    def range(self, beginKey, beginKeyIncluded, endKey, endKeyIncluded,
+        maxElements=-1):
+        """
+        Perform a range query on the store, retrieving the set of matching keys
+
+        Retrieve a set of keys that lexographically fall between the beginKey and the endKey
+        You can specify whether the beginKey and endKey need to be included in the result set
+        Additionaly you can limit the size of the result set to maxElements. Default is to return all matching keys.
+
+        @type beginKey: string option
+        @type beginKeyIncluded: boolean
+        @type endKey :string option
+        @type endKeyIncluded: boolean
+        @type maxElements: integer
+        @param beginKey: Lower boundary of the requested range
+        @param beginKeyIncluded: Indicates if the lower boundary should be part of the result set
+        @param endKey: Upper boundary of the requested range
+        @param endKeyIncluded: Indicates if the upper boundary should be part of the result set
+        @param maxElements: The maximum number of keys to return. Negative means no maximum, all matches will be returned. Defaults to -1.
+
+        @rtype: list of strings
+        @return: Returns a list containing all matching keys
+        """
+
+        result = self._client.range(beginKey, beginKeyIncluded, endKey,
+            endKeyIncluded, maxElements)
+
+        return list(result)
+
+    @_convert_exceptions
+    @_validate_signature('string_option', 'bool', 'string_option', 'bool',
+        'int')
+    def range_entries(self, first, finc, last, linc, maxElements=-1):
+        """
+        Perform a range query on the store, retrieving the set of matching key-value pairs
+
+        Retrieve a set of keys that lexographically fall between the beginKey and the endKey
+        You can specify whether the beginKey and endKey need to be included in the result set
+        Additionaly you can limit the size of the result set to maxElements. Default is to return all matching keys.
+
+        @type beginKey: string option
+        @type beginKeyIncluded: boolean
+        @type endKey :string option
+        @type endKeyIncluded: boolean
+        @type maxElements: integer
+        @param beginKey: Lower boundary of the requested range
+        @param beginKeyIncluded: Indicates if the lower boundary should be part of the result set
+        @param endKey: Upper boundary of the requested range
+        @param endKeyIncluded: Indicates if the upper boundary should be part of the result set
+        @param maxElements: The maximum number of key-value pairs to return. Negative means no maximum, all matches will be returned. Defaults to -1.
+
+        @rtype: list of strings
+        @return: Returns a list containing all matching key-value pairs
+        """
+
+        result = self._client.range_entries(first, finc, last, linc,
+            maxElements)
+
+        return [(key, value) for key, value in result]
+
+    @_convert_exceptions
+    @_validate_signature('string', 'int')
+    def prefix(self, keyPrefix, maxElements=-1):
+        """
+        Retrieve a set of keys that match with the provided prefix.
+
+        You can indicate whether the prefix should be included in the result set if there is a key that matches exactly
+        Additionaly you can limit the size of the result set to maxElements
+
+        @type keyPrefix: string
+        @type maxElements: integer
+        @param keyPrefix: The prefix that will be used when pattern matching the keys in the store
+        @param maxElements: The maximum number of keys to return. Negative means no maximum, all matches will be returned. Defaults to -1.
+
+        @rtype: list of strings
+        @return: Returns a list of keys matching the provided prefix
+        """
+
+        result = self._client.prefix(keyPrefix, maxElements)
+
+        return list(result)
+
+    @_convert_exceptions
+    def whoMaster(self):
+        self._client.determine_master()
+        return self._client.master_id
+
+    @_convert_exceptions
+    @_validate_signature('string', 'string_option', 'string_option')
+    def testAndSet(self, key, oldValue, newValue):
+        """
+        Conditionaly update the value associcated with the provided key.
+
+        The value associated with key will be updated to newValue if the current value in the store equals oldValue
+        If the current value is different from oldValue, this is a no-op.
+        Returns the value that was associated with key in the store prior to this operation. This way you can check if the update was executed or not.
+
+        @type key: string
+        @type oldValue: string option
+        @type newValue: string
+        @param key: The key whose value you want to updated
+        @param oldValue: The expected current value associated with the key.
+        @param newValue: The desired new value to be stored.
+
+        @rtype: string
+        @return: The value that was associated with the key prior to this operation
+        """
+
+        return self._client.test_and_set(key, oldValue, newValue)
+
+    @_convert_exceptions
+    @_validate_signature('string_list')
+    def multiGet(self, keys):
+        """
+        Retrieve the values for the keys in the given list.
+
+        @type keys: string list
+        @rtype: string list
+        @return: the values associated with the respective keys
+        """
+
+        return list(self._client.multi_get(keys))
+
+
+# Exception types
+# This is mostly a copy from the ArakoonExceptions module, with some cosmetic
+# changes and some code simplifications
+
+class ArakoonException(Exception):
+    _msg = None
+
+    def __init__(self, msg=''):
+        if self._msg is not None and msg == '':
+            msg = self._msg
+
+        Exception.__init__(self, msg)
+
+class ArakoonNotFound(ArakoonException, KeyError):
+    _msg = 'Key not found'
+
+class ArakoonUnknownNode(ArakoonException):
+    _msgF = 'Unknown node identifier: %s'
+
+    def __init__(self, nodeId):
+        self._msg = ArakoonUnknownNode._msgF % nodeId
+
+        ArakoonException.__init__(self, self._msg)
+
+class ArakoonNotConnected(ArakoonException):
+    _msgF = 'No connection available to node at \'%s:%s\''
+
+    def __init__(self, location):
+        self._msg = ArakoonNotConnected._msgF % location
+
+        ArakoonException.__init__(self, self._msg)
+
+class ArakoonNoMaster(ArakoonException):
+    _msg = 'Could not determine the Arakoon master node'
+
+class ArakoonNoMasterResult(ArakoonException):
+    _msg = 'Master could not be contacted.'
+
+class ArakoonNodeNotMaster(ArakoonException):
+    _msg = 'Cannot perform operation on non-master node'
+
+class ArakoonSockReadNoBytes(ArakoonException):
+    _msg = 'Could not read a single byte from the socket. Aborting.'
+
+class ArakoonSockNotReadable(ArakoonException):
+    _msg = 'Socket is not readable. Aborting.'
+
+class ArakoonSockRecvError(ArakoonException):
+    _msg = 'Error while receiving data from socket'
+
+class ArakoonSockRecvClosed(ArakoonException):
+    _msg = 'Cannot receive on a not-connected socket'
+
+class ArakoonSockSendError(ArakoonException):
+    _msg = 'Error while sending data on socket'
+
+class ArakoonInvalidArguments(ArakoonException, TypeError):
+    _msgF = 'Invalid argument(s) for %s: %s'
+
+    def __init__ (self, fun_name, invalid_args):
+        # Allow passing single argument, used by _convert_exception
+        if not invalid_args:
+            ArakoonException.__init__(self, fun_name)
+            return
+
+        error_string = ', '.join('%s=%s' % arg for arg in invalid_args)
+
+        self._msg = ArakoonInvalidArguments._msgF % (fun_name, error_string)
+
+        ArakoonException.__init__(self, self._msg)
+
+
+def _convert_exception(exc):
+    '''Convert an exception to a suitable `ArakoonException`
+
+    This function converts several types of `errors.ArakoonError` instances
+    into `ArakoonException` instances, for compatibility reasons.
+
+    If no suitable conversion can be performed, the original exception is
+    returned.
+
+    :param exc: Exception to convert
+    :type exc: `object`
+
+    :return: New exception
+    :rtype: `object`
+    '''
+
+    if isinstance(exc, errors.NotFound):
+        exc_ = ArakoonNotFound(exc.message)
+        exc_.inner = exc
+        return exc_
+    elif isinstance(exc, errors.NotMaster):
+        exc_ = ArakoonNodeNotMaster(exc.message)
+        exc_.inner = exc
+        return exc_
+    elif isinstance(exc, (TypeError, ValueError)):
+        exc_ = ArakoonInvalidArguments(exc.message, None)
+        LOGGER.exception(exc)
+        exc_.inner = exc
+        return exc_
+    elif isinstance(exc, errors.ArakoonError):
+        exc_ = ArakoonException(exc.message)
+        exc_.inner = exc
+        return exc_
+    else:
+        return exc
+
+
+# Sequence type definitions
+class Update(object):
+    def write(self, fob):
+        raise NotImplementedError
+
+class Set(Update):
+    def __init__(self, key, value):
+        self._key = key
+        self._value = value
+
+class Delete(Update):
+    def __init__(self, key):
+        self._key = key
+
+class Sequence(Update):
+    def __init__(self):
+        self._updates = []
+
+    def addUpdate(self, u):
+        self._updates.append(u)
+
+    @_validate_signature('string', 'string')
+    def addSet(self, key, value):
+        self._updates.append(Set(key, value))
+
+    @_validate_signature('string')
+    def addDelete(self, key):
+        self._updates.append(Delete(key))
+
+
+# ArakoonClientConfig
+# This is copied from the ArakoonProtocol module
+ARA_CFG_TRY_CNT = 1
+ARA_CFG_CONN_TIMEOUT = 60
+ARA_CFG_CONN_BACKOFF = 5
+ARA_CFG_NO_MASTER_RETRY = 60
+
+class ArakoonClientConfig :
+
+    def __init__ (self, nodes=None):
+        """
+        Constructor of an ArakoonClientConfig object
+
+        The constructor takes one optional parameter 'nodes'.
+        This is a dictionary containing info on the arakoon server nodes. It contains:
+          - nodeids as keys
+          - (hostname/ip, tcp port) tuples as value
+        e.g. ::
+            cfg = ArakoonClientConfig ( { "myFirstNode" : ( "127.0.0.1", 4000 ),
+                    "mySecondNode" : ( "127.0.0.1", 5000 ) ,
+                    "myThirdNode"  : ( "127.0.0.1", 6000 ) } )
+        Defaults to a single node running on localhost:4000
+
+        @type nodes: dict
+        @param nodes: A dictionary containing the locations for the server nodes
+
+        """
+        if nodes is None:
+            self._nodes = { "arakoon_0" : ( "127.0.0.1", 4000 ) }
+
+        else :
+            self._nodes = nodes
+
+    @staticmethod
+    def getNoMasterRetryPeriod() :
+        """
+        Retrieve the period messages to the master should be retried when a master re-election occurs
+
+        This period is specified in seconds
+
+        @rtype: integer
+        @return: Returns the retry period in seconds
+        """
+        return ARA_CFG_NO_MASTER_RETRY
+
+    def getNodeLocation(self, nodeId):
+        """
+        Retrieve location of the server node with give node identifier
+
+        A location is a pair consisting of a hostname or ip address as first element.
+        The second element of the pair is the tcp port
+
+        @type nodeId: string
+        @param nodeId: The node identifier whose location you are interested in
+
+        @rtype: pair(string,int)
+        @return: Returns a pair with the nodes hostname or ip and the tcp port, e.g. ("127.0.0.1", 4000)
+        """
+        return self._nodes[ nodeId ]
+
+
+    def getTryCount (self):
+        """
+        Retrieve the number of attempts a message should be tried before giving up
+
+        Can be controlled by changing the global variable L{ARA_CFG_TRY_CNT}
+
+        @rtype: integer
+        @return: Returns the max retry count.
+        """
+        return ARA_CFG_TRY_CNT
+
+
+    def getNodes(self):
+        """
+        Retrieve the dictionary with node locations
+
+        @rtype: dict
+        @return: Returns a dictionary mapping the node identifiers (string) to its location ( pair<string,integer> )
+        """
+        return self._nodes
+
+
+    @staticmethod
+    def getConnectionTimeout():
+        """
+        Retrieve the tcp connection timeout
+
+        Can be controlled by changing the global variable L{ARA_CFG_CONN_TIMEOUT}
+
+        @rtype: integer
+        @return: Returns the tcp connection timeout
+        """
+        return ARA_CFG_CONN_TIMEOUT
+
+    @staticmethod
+    def getBackoffInterval():
+        """
+        Retrieves the backoff interval.
+
+        If an attempt to send a message to the server fails,
+        the client will wait a random number of seconds. The maximum wait time is n*getBackoffInterVal()
+        with n being the attempt counter.
+        Can be controlled by changing the global variable L{ARA_CFG_CONN_BACKOFF}
+
+        @rtype: integer
+        @return: The maximum backoff interval
+        """
+        return ARA_CFG_CONN_BACKOFF
+
+
+# Actual client implementation
+class _ArakoonClient(client.Client):
+    def __init__(self, config):
+        self._config = config
+        self.master_id = None
+
+        self._lock = threading.RLock()
+        self._connections = dict()
+
+    @property
+    def connected(self):
+        return True
+
+    def _process(self, bytes_, receiver):
+        bytes_ = ''.join(bytes_)
+
+        self._lock.acquire()
+
+        try:
+            start = time.time()
+            tryCount = 0.0
+            backoffPeriod = 0.2
+            callSucceeded = False
+            retryPeriod = ArakoonClientConfig.getNoMasterRetryPeriod()
+            deadline = start + retryPeriod
+
+            while not callSucceeded and time.time() < deadline:
+                try:
+                    # Send on wire
+                    connection = self._send_to_master(bytes_)
+                    return client.process_blocking(receiver, connection.read)
+                except (errors.NotMaster, ArakoonNoMaster):
+                    self.master_id = None
+                    self._drop_connections()
+
+                    sleepPeriod = backoffPeriod * tryCount
+                    if time.time() + sleepPeriod > deadline:
+                        raise
+
+                    tryCount += 1.0
+                    LOGGER.warning(
+                        'Master not found, retrying in %0.2f seconds' % \
+                            sleepPeriod)
+
+                    time.sleep(sleepPeriod)
+
+        finally:
+            self._lock.release()
+
+    def _send_message(self, node_id, data, count=-1):
+        result = None
+
+        if count < 0:
+            count = self._config.getTryCount()
+
+        for i in xrange(count):
+            if i > 0:
+                max_sleep = i * ArakoonClientConfig.getBackoffInterval()
+                time.sleep(random.randint(0, max_sleep))
+
+            self._lock.acquire()
+            try:
+                connection = self._get_connection(node_id)
+                connection.send(data)
+
+                result = connection
+                break
+            except Exception:
+                LOGGER.exception('Message exchange with node %s failed',
+                    node_id)
+                try:
+                    self._connections.pop(node_id).close()
+                finally:
+                    self.master_id = None
+            finally:
+                self._lock.release()
+
+        if not result:
+            raise
+
+        return result
+
+    def _send_to_master(self, data):
+        self.determine_master()
+
+        connection = self._send_message(self.master_id, data)
+
+        return connection
+
+    def _drop_connections(self):
+        for key in tuple(self._connections.iterkeys()):
+            self._connections.pop(key).close()
+
+    def determine_master(self):
+        node_ids = []
+
+        if self.master_id is None:
+            node_ids = self._config.getNodes().keys()
+            random.shuffle(node_ids)
+
+            while self.master_id is None and node_ids:
+                node = node_ids.pop()
+
+                try:
+                    self.master_id = self._get_master_id_from_node(node)
+                    tmp_master = self.master_id
+
+                    try:
+                        if self.master_id is not None:
+                            if self.master_id != node and not \
+                                self._validate_master_id(self.master_id):
+                                self.master_id = None
+                            else:
+                                LOGGER.warning(
+                                    'Node "%s" doesn\'t know the master',
+                                    node)
+                    except Exception:
+                        LOGGER.exception(
+                            'Unable to validate master on node %s', tmp_master)
+                        self.master_id = None
+
+                except Exception:
+                    LOGGER.exception(
+                        'Unable to query node "%s" to look up master', node)
+
+        if not self.master_id:
+            LOGGER.error('Unable to determine master node')
+            raise ArakoonNoMaster
+
+    def _get_master_id_from_node(self, node_id):
+        command = protocol.WhoMaster()
+        data = ''.join(command.serialize())
+
+        connection = self._send_message(node_id, data)
+
+        receiver = command.receive()
+        return client.process_blocking(receiver, connection.read)
+
+    def _validate_master_id(self, master_id):
+        if not master_id:
+            return False
+
+        other_master_id = self._get_master_id_from_node(master_id)
+
+        return other_master_id == master_id
+
+    def _get_connection(self, node_id):
+        connection = None
+
+        if node_id in self._connections:
+            connection = self._connections[node_id]
+
+        if not connection:
+            node_location = self._config.getNodeLocation(node_id)
+            connection = _ClientConnection(node_location)
+            connection.connect()
+
+            self._connections[node_id] = connection
+
+        return connection
+
+
+class _ClientConnection(object):
+    def __init__(self, address):
+        self._address = address
+        self._connected = False
+        self._socket = None
+
+    def connect(self):
+        if self._socket:
+            self._socket.close()
+            self._socket = None
+
+        try:
+            self._socket = socket.create_connection(self._address,
+                ArakoonClientConfig.getConnectionTimeout())
+            self._socket.setblocking(False)
+            self._connected = True
+        except Exception:
+            LOGGER.exception('Unable to connect to %s', self._address)
+
+    def send(self, data):
+        if not self._connected:
+            self.connect()
+
+            if not self._connected:
+                raise ArakoonNotConnected(self._address)
+
+        try:
+            self._socket.sendall(data)
+        except Exception:
+            LOGGER.exception('Error while sending data to %s', self._address)
+            self.close()
+            raise ArakoonSockSendError
+
+    def close(self):
+        if self._connected and self._socket:
+            try:
+                self._socket.close()
+            except Exception:
+                LOGGER.exception('Error while closing socket to %s',
+                    self._address)
+            finally:
+                self._connected = False
+
+    def read(self, count):
+        if not self._connected:
+            raise ArakoonSockRecvClosed
+
+        bytes_remaining = count
+        result = []
+        timeout = ArakoonClientConfig.getConnectionTimeout()
+
+        while bytes_remaining > 0:
+            reads, _, _ = select.select([self._socket], [], [], timeout)
+
+            if self._socket in reads:
+                try:
+                    data = self._socket.recv(bytes_remaining)
+                except Exception:
+                    LOGGER.exception('Error while reading socket')
+                    self._connected = False
+
+                    raise ArakoonSockRecvError
+
+                if len(data) == 0:
+                    try:
+                        self.close()
+                    except Exception:
+                        LOGGER.exception('Error while closing socket')
+
+                    self._connected = False
+
+                    raise ArakoonSockReadNoBytes
+
+                result.append(data)
+                bytes_remaining -= len(data)
+
+            else:
+                try:
+                    self.close()
+                except Exception:
+                    LOGGER.exception('Error while closing socket')
+                finally:
+                    self._connnected = False
+
+                raise ArakoonSockNotReadable
+
+        return ''.join(result)
