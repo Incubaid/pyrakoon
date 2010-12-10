@@ -426,6 +426,9 @@ class ArakoonClient(object):
 
         return _reversed_list(self._client.multi_get(keys))
 
+    def _dropConnections(self):
+        return self._client.drop_connections()
+
 
 # Exception types
 # This is mostly a copy from the ArakoonExceptions module, with some cosmetic
@@ -710,7 +713,7 @@ class _ArakoonClient(client.Client):
                     return client.process_blocking(receiver, connection.read)
                 except (errors.NotMaster, ArakoonNoMaster):
                     self.master_id = None
-                    self._drop_connections()
+                    self.drop_connections()
 
                     sleepPeriod = backoffPeriod * tryCount
                     if time.time() + sleepPeriod > deadline:
@@ -766,7 +769,7 @@ class _ArakoonClient(client.Client):
 
         return connection
 
-    def _drop_connections(self):
+    def drop_connections(self):
         for key in tuple(self._connections.iterkeys()):
             self._connections.pop(key).close()
 
