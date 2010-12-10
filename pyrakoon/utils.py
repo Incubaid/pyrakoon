@@ -233,6 +233,37 @@ def kill_coroutine(coroutine, log_fun=None):
     The provided `log_fun` function will be called when an unexpected error
     occurs. It should take a *message* argument.
 
+    Example:
+
+        >>> import sys
+
+        >>> def f():
+        ...     a = yield 1
+        ...     b = yield 3
+        ...     c = yield 5
+
+        >>> f_ = f()
+        >>> print f_.next()
+        1
+        >>> print f_.send('2')
+        3
+        >>> kill_coroutine(f_)
+
+        >>> def incorrect():
+        ...     try:
+        ...         yield 1
+        ...         a = yield 2
+        ...     except:
+        ...         raise Exception
+        ...     yield 3
+
+        >>> i = incorrect()
+        >>> print i.next()
+        1
+        >>> kill_coroutine(i,
+        ...     lambda msg: sys.stdout.write('Error: %s' % msg))
+        Error: Failure while killing coroutine
+
     :param coroutine: Coroutine to kill
     :type coroutine: *generator*
     :param log_fun: Function to call when an exception is encountered
@@ -240,15 +271,10 @@ def kill_coroutine(coroutine, log_fun=None):
     '''
 
     try:
-        coroutine.throw(StopIteration)
-    except StopIteration:
-        # This is the normal, expected case
-        pass
-    except (KeyboardInterrupt, SystemExit):
-        # Re-raise these
-        raise
+        coroutine.close()
     except:
         try:
-            log_fun('Failure while killing coroutine')
+            if log_fun:
+                log_fun('Failure while killing coroutine')
         except: #pylint: disable-msg=W0702
             pass
