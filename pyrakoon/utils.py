@@ -272,7 +272,7 @@ def kill_coroutine(coroutine, log_fun=None):
 
     try:
         coroutine.close()
-    except:
+    except: #pylint: disable-msg=W0702
         try:
             if log_fun:
                 log_fun('Failure while killing coroutine')
