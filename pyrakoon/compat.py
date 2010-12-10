@@ -53,7 +53,7 @@ LOGGER = logging.getLogger(__name__)
 
 def _add_handler():
     if hasattr(logging, 'NullHandler'):
-        handler = logging.NullHandler()
+        handler = logging.NullHandler() #pylint: disable-msg=E1101
     else:
         class NullHandler(logging.Handler):
             def emit(self, record):
