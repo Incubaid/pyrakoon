@@ -180,6 +180,9 @@ class ArakoonClient(object):
 
         self._client = _ArakoonClient(config)
 
+        # Keep a reference, for compatibility reasons
+        self._config = config
+
     def _initialize(self, config):
         raise NotImplementedError
 
