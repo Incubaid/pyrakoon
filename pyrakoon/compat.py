@@ -145,6 +145,22 @@ def _convert_exceptions(fun):
     return wrapped
 
 
+def _reversed_list(iter_):
+    '''Return a list of the reversed iterable
+
+    :param iter_: Iterable to return as a list, reversed
+    :type iter_: iterable
+
+    :return: Reversed list representation of the iterable
+    :rtype: `list`
+    '''
+
+    result = list(iter_)
+    result.reverse()
+
+    return result
+
+
 class ArakoonClient(object):
     def __init__(self, config=None):
         """
@@ -314,7 +330,7 @@ class ArakoonClient(object):
         result = self._client.range(beginKey, beginKeyIncluded, endKey,
             endKeyIncluded, maxElements)
 
-        return list(result)
+        return _reversed_list(result)
 
     @_convert_exceptions
     @_validate_signature('string_option', 'bool', 'string_option', 'bool',
@@ -345,7 +361,7 @@ class ArakoonClient(object):
         result = self._client.range_entries(first, finc, last, linc,
             maxElements)
 
-        return [(key, value) for key, value in result]
+        return _reversed_list((key, value) for key, value in result)
 
     @_convert_exceptions
     @_validate_signature('string', 'int')
@@ -367,7 +383,7 @@ class ArakoonClient(object):
 
         result = self._client.prefix(keyPrefix, maxElements)
 
-        return list(result)
+        return _reversed_list(result)
 
     @_convert_exceptions
     def whoMaster(self):
@@ -408,7 +424,7 @@ class ArakoonClient(object):
         @return: the values associated with the respective keys
         """
 
-        return list(self._client.multi_get(keys))
+        return _reversed_list(self._client.multi_get(keys))
 
 
 # Exception types
