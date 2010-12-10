@@ -155,6 +155,10 @@ class Client(object):
     def multi_get(self): #pylint: disable-msg=R0201
         assert False
 
+    @call(protocol.ExpectProgressPossible)
+    def expect_progress_possible(self): #pylint: disable-msg=R0201
+        assert False
+
     __getitem__ = get
     __setitem__ = set
     __delitem__ = delete

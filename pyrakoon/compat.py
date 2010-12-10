@@ -429,6 +429,18 @@ class ArakoonClient(object):
 
         return _reversed_list(self._client.multi_get(keys))
 
+    @_convert_exceptions
+    def expectProgressPossible(self):
+        """
+        @return: true if the master thinks progress is possible, false otherwise
+        """
+
+        try:
+            return self._client.expect_progress_possible()
+        except ArakoonNoMaster:
+            return False
+
+
     def _dropConnections(self):
         return self._client.drop_connections()
 

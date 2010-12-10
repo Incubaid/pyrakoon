@@ -615,6 +615,7 @@ class Exists(Message):
 
     key = property(operator.attrgetter('_key'))
 
+
 class Get(Message):
     '''"get" message'''
 
@@ -642,6 +643,7 @@ class Get(Message):
         self._key = key
 
     key = property(operator.attrgetter('_key'))
+
 
 class Set(Message):
     '''"set" message'''
@@ -672,6 +674,7 @@ class Set(Message):
     key = property(operator.attrgetter('_key'))
     value = property(operator.attrgetter('_value'))
 
+
 class Delete(Message):
     '''"delete" message'''
 
@@ -696,6 +699,7 @@ class Delete(Message):
         self._key = key
 
     key = property(operator.attrgetter('_key'))
+
 
 class PrefixKeys(Message):
     '''"prefix_keys" message'''
@@ -730,6 +734,7 @@ class PrefixKeys(Message):
 
     prefix = property(operator.attrgetter('_prefix'))
     max_elements = property(operator.attrgetter('_max_elements'))
+
 
 class TestAndSet(Message):
     '''"test_and_set" message'''
@@ -775,6 +780,7 @@ class TestAndSet(Message):
     test_value = property(operator.attrgetter('_test_value'))
     set_value = property(operator.attrgetter('_set_value'))
 
+
 class Sequence(Message):
     '''"sequence" message'''
 
@@ -816,6 +822,7 @@ class Sequence(Message):
 
         for bytes_ in STRING.serialize(sequence_bytes):
             yield bytes_
+
 
 class Range(Message):
     '''"Range" message'''
@@ -870,6 +877,7 @@ class Range(Message):
     end_inclusive = property(operator.attrgetter('_end_inclusive'))
     max_elements = property(operator.attrgetter('_max_elements'))
 
+
 class RangeEntries(Message):
     '''"RangeEntries" message'''
 
@@ -923,6 +931,7 @@ class RangeEntries(Message):
     end_inclusive = property(operator.attrgetter('_end_inclusive'))
     max_elements = property(operator.attrgetter('_max_elements'))
 
+
 class MultiGet(Message):
     '''"multi_get" message'''
 
@@ -950,3 +959,22 @@ class MultiGet(Message):
         self._keys = keys
 
     keys = property(operator.attrgetter('_keys'))
+
+
+class ExpectProgressPossible(Message):
+    '''"expect_progress_possible" message'''
+
+    __slots__ = ()
+
+    TAG = 0x0012 | Message.MASK
+    ARGS = ()
+    RETURN_TYPE = BOOL
+
+    DOC = utils.format_doc('''
+        Send a "expect_progress_possible" command to the server
+
+        This method returns whether the master thinks progress is possible.
+
+        :return: Whether the master thinks progress is possible
+        :rtype: `bool`
+    ''')
