@@ -171,7 +171,9 @@ class TestTypeCheck(unittest.TestCase):
             ((), False),
             (None, False),
             ((-1, 'abc'), False),
-            ((0, None), False)
+            ((0, None), False),
+            ('abc', False),
+            (u'abc', False),
         )
 
     def test_complex(self):
