@@ -314,18 +314,18 @@ class TestExceptions(unittest.TestCase):
 
     class __metaclass__(type):
         def __new__(cls, name, bases, attrs):
-            for name in dir(errors):
-                attr = getattr(errors, name)
+            for name_ in dir(errors):
+                attr = getattr(errors, name_)
 
                 if not inspect.isclass(attr) \
                     or not issubclass(attr, errors.ArakoonError) \
                     or attr is errors.ArakoonError:
                     continue
 
-                test_name = 'test_%s' % name
+                test_name = 'test_%s' % name_
                 assert test_name not in attrs
 
-                attrs[test_name] = cls._generate_test(name, test_name, attr)
+                attrs[test_name] = cls._generate_test(name_, test_name, attr)
 
             return type.__new__(cls, name, bases, attrs)
 
