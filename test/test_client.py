@@ -34,7 +34,7 @@ try:
 except ImportError:
     HAS_NOSE = False
 
-from pyrakoon import client, protocol
+from pyrakoon import client, errors, protocol, test
 
 class TestValidateTypes(unittest.TestCase):
     '''Tests for `pyrakoon.client.validate_types`'''
@@ -52,11 +52,11 @@ class TestValidateTypes(unittest.TestCase):
     def test_single_incorrect_argument(self):
         '''Test `validate_types` if one incorrect argument is provided'''
 
-        test = lambda value: client.validate_types(
+        run_test = lambda value: client.validate_types(
             (('i', protocol.UNSIGNED_INTEGER), ), (value, ))
 
-        self.assertRaises(ValueError, test, -1)
-        self.assertRaises(TypeError, test, '1')
+        self.assertRaises(ValueError, run_test, -1)
+        self.assertRaises(TypeError, run_test, '1')
 
     def test_multiple_correct_arguments(self):
         '''Test `validate_types` with multiple correct arguments'''
@@ -69,13 +69,13 @@ class TestValidateTypes(unittest.TestCase):
     def test_multiple_incorrect_arguments(self):
         '''Test `validate_types` with multiple incorrect arguments'''
 
-        test = lambda value: client.validate_types((
+        run_test = lambda value: client.validate_types((
             ('name', protocol.STRING),
             ('age', protocol.Option(protocol.UNSIGNED_INTEGER)),
         ), ('name', value, ))
 
-        self.assertRaises(ValueError, test, -1)
-        self.assertRaises(TypeError, test, '1')
+        self.assertRaises(ValueError, run_test, -1)
+        self.assertRaises(TypeError, run_test, '1')
 
 
 class TestClient(unittest.TestCase):
@@ -110,3 +110,50 @@ def test_process_blocking():
         nose.tools.assert_equals(result, 'xxx')
     else:
         assert result == 'xxx'
+
+
+class TestScenario(unittest.TestCase):
+    '''Test a more complex scenario using `pyrakoon.test.FakeClient`'''
+
+    def test_scenario(self):
+        '''Test a scenario'''
+
+        client_ = test.FakeClient()
+
+        self.assertEquals(client_.hello('testsuite'), test.FakeClient.VERSION)
+        self.assertEquals(client_.who_master(), test.FakeClient.MASTER)
+
+        self.assertFalse(client_.exists('key'))
+
+        client_.set('key', 'value')
+        self.assertTrue(client_.exists('key'))
+
+        self.assertEquals(client_.get('key'), 'value')
+
+        client_.delete('key')
+
+        self.assertRaises(errors.NotFound, client_.get, 'key')
+        self.assertRaises(errors.NotFound, client_.delete, 'key')
+        self.assertFalse(client_.exists('key'))
+
+        for i in xrange(100):
+            client_.set('key_%d' % i, 'value_%d' % i)
+
+        self.assertEquals(set(client_.prefix('key_')),
+            set('key_%d' % i for i in xrange(100)))
+
+        keys = tuple(client_.prefix('key_1', 5))
+        self.assertEquals(len(keys), 5)
+        self.assert_(all(key.startswith('key_1') for key in keys))
+
+        self.assertEquals(client_.test_and_set('taskey', None, 'value'), None)
+        self.assertEquals(client_.test_and_set('taskey', 'value', 'value2'),
+            'value')
+        self.assertEquals(client_.test_and_set('taskey', 'value', 'value3'),
+            'value2')
+        self.assertEquals(client_.get('taskey'), 'value2')
+
+        self.assertEquals(client_.test_and_set('taskey', 'value2', None),
+            'value2')
+
+        self.assertFalse(client_.exists('taskey'))
