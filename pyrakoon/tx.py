@@ -121,7 +121,13 @@ class ArakoonProtocol(client.Client, stateful.StatefulProtocol,
 
         self._currentHandler = None
 
-        self._currentHandler = handler = self._handlers.pop()
+        try:
+            self._currentHandler = handler = self._handlers.pop()
+        except IndexError:
+            log.msg('Request data received but no handler registered')
+            self.transport.loseConnection()
+
+            return None
 
         request = handler[0].next()
 
