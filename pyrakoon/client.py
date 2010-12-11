@@ -89,10 +89,7 @@ def call(message_type):
 
             message = message_type(*args) #pylint: disable-msg=W0142
 
-            #pylint: disable-msg=W0212
-            data = message.serialize()
-
-            return self._process(data, message.receive())
+            return self._process(message) #pylint: disable-msg=W0212
 
         wrapped.__doc__ = message_type.DOC #pylint: disable-msg=W0622
 
@@ -164,22 +161,25 @@ class Client(object):
     __delitem__ = delete
     __contains__ = exists
 
-    def _process(self, bytes_, receiver):
+    def _process(self, message):
         '''
-        Submit an iterable of bytes to the server, and read the result using
-        `receiver`
+        Submit a message to the server, parse the result and return it
 
-        The result of a successful parse using `receiver` should be returned.
+        The given `message` should be serialized using its `serialize` method
+        and submitted to the server. Then the `receive` coroutine of the message
+        should be used to retrieve and parse a result from the server. The
+        returned value should be returned by this method, or any exceptions
+        should be rethrown if caught.
 
-        :param bytes\_: Iterable of bytes to submit
-        :type bytes\_: iterable of `str`
-        :param receiver: Coroutine to read and parse the server result
-        :type receiver: *generator*
+        :param message: Message to handle
+        :type message: `pyrakoon.protocol.Message`
 
         :return: Server result value
         :rtype: `object`
 
+        :see: `pyrakoon.protocol.Message.serialize`
         :see: `pyrakoon.protocol.Message.receive`
+        :see: `process_blocking`
         '''
 
         raise NotImplementedError
@@ -187,7 +187,35 @@ class Client(object):
 #pylint: enable-msg=C0111
 
 
-def process_blocking(receiver, read_fun):
+def process_blocking(message, stream):
+    '''Process a message using a blocking stream API
+
+    The given `message` will be serialized and written to the stream. Once the
+    message was written, the result will be read using `read_blocking`.
+
+    The given stream object should implement `write` and `read` methods,
+    somewhat like the file interface.
+
+    :param message: Message to process
+    :type message: `pyrakoon.protocol.Message`
+    :param stream: Stream to work on
+    :type stream: `object`
+
+    :return: Result of the command execution
+    :rtype: `object`
+
+    :see: `Client._process`
+    :see: `pyrakoon.protocol.Message.serialize`
+    :see: `pyrakoon.prococol.Message.receive`
+    '''
+
+    for bytes_ in message.serialize():
+        stream.write(bytes_)
+
+    return read_blocking(message.receive(), stream.read)
+
+
+def read_blocking(receiver, read_fun):
     '''Process message result parsing using a blocking stream read function
 
     Given a function to read a given amount of bytes from a result channel,
@@ -247,14 +275,14 @@ class SocketClient(Client):
 
         return self._socket is not None
 
-    def _process(self, bytes_, receiver):
+    def _process(self, message):
         self._lock.acquire()
 
         try:
-            for part in bytes_:
-                self._socket.send(part)
+            for part in message.serialize():
+                self._socket.sendall(part)
 
-            return process_blocking(receiver, self._socket.recv)
+            return read_blocking(message.receive(), self._socket.recv)
         except Exception:
             try:
                 self._socket.close()

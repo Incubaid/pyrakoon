@@ -97,13 +97,13 @@ class TestClient(unittest.TestCase):
         self.assertRaises(RuntimeError, client_.hello, 'testsuite')
 
 
-def test_process_blocking():
-    '''Test `process_blocking`'''
+def test_read_blocking():
+    '''Test `read_blocking`'''
 
     data = StringIO.StringIO(''.join(chr(c) for c in (
         0, 0, 0, 0, 3, 0, 0, 0, ord('x'), ord('x'), ord('x'))))
 
-    result = client.process_blocking(protocol.Hello('testsuite').receive(),
+    result = client.read_blocking(protocol.Hello('testsuite').receive(),
         data.read)
 
     if HAS_NOSE:

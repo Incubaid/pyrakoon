@@ -708,8 +708,8 @@ class _ArakoonClient(client.Client):
     def connected(self):
         return True
 
-    def _process(self, bytes_, receiver):
-        bytes_ = ''.join(bytes_)
+    def _process(self, message):
+        bytes_ = ''.join(message.serialize())
 
         self._lock.acquire()
 
@@ -725,7 +725,8 @@ class _ArakoonClient(client.Client):
                 try:
                     # Send on wire
                     connection = self._send_to_master(bytes_)
-                    return client.process_blocking(receiver, connection.read)
+                    return client.read_blocking(message.receive(),
+                        connection.read)
                 except (errors.NotMaster, ArakoonNoMaster):
                     self.master_id = None
                     self.drop_connections()
@@ -831,7 +832,7 @@ class _ArakoonClient(client.Client):
         connection = self._send_message(node_id, data)
 
         receiver = command.receive()
-        return client.process_blocking(receiver, connection.read)
+        return client.read_blocking(receiver, connection.read)
 
     def _validate_master_id(self, master_id):
         if not master_id:

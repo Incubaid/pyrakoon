@@ -44,11 +44,11 @@ class FakeClient(client.Client):
 
         self._values = {}
 
-    def _process(self, bytes_, receiver): #pylint: disable-msg=R0912
-        bytes_ = StringIO.StringIO(''.join(bytes_)).read
+    def _process(self, message): #pylint: disable-msg=R0912
+        bytes_ = StringIO.StringIO(''.join(message.serialize())).read
 
         # Helper
-        recv = lambda type_: client.process_blocking(type_.receive(), bytes_)
+        recv = lambda type_: client.read_blocking(type_.receive(), bytes_)
 
         command = recv(protocol.UNSIGNED_INTEGER)
 
@@ -217,4 +217,4 @@ class FakeClient(client.Client):
             result.write(struct.pack('<I', 0))
             result.seek(0)
 
-        return client.process_blocking(receiver, result.read)
+        return client.read_blocking(message.receive(), result.read)

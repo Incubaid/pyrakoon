@@ -86,11 +86,11 @@ class ArakoonProtocol(client.Client, stateful.StatefulProtocol,
         self._deferredLock = defer.DeferredLock()
         self._threadLock = threading.Lock()
 
-    def _process(self, bytes_, receiver):
+    def _process(self, message):
         # Not sure we really want/need all this locking stuff...
 
         deferred = defer.Deferred()
-        self._handlers.append((receiver, deferred))
+        self._handlers.append((message.receive(), deferred))
 
         def process(_):
             '''Write command bytes on the channel'''
@@ -98,7 +98,7 @@ class ArakoonProtocol(client.Client, stateful.StatefulProtocol,
             self._threadLock.acquire()
 
             try:
-                for data in bytes_:
+                for data in message.serialize():
                     self.transport.write(data)
 
             finally:
