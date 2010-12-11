@@ -29,7 +29,7 @@ import threading
 import collections
 
 from twisted.internet import defer, protocol as twisted_protocol
-from twisted.protocols import basic, policies, stateful
+from twisted.protocols import basic, stateful
 from twisted.python import log
 
 from pyrakoon import client, errors, protocol, utils
@@ -68,26 +68,18 @@ except AttributeError:
             self.transport.stopProducing()
 
 
-_DEFAULT_TIMEOUT = 60
-'''Default timeout''' #pylint: disable-msg=W0105
-
 class ArakoonProtocol(client.Client, stateful.StatefulProtocol,
-    _PauseableMixin, policies.TimeoutMixin):
+    _PauseableMixin):
     '''Protocol to access an Arakoon server'''
 
     _INITIAL_REQUEST_SIZE = protocol.UNSIGNED_INTEGER.PACKER.size
 
-    def __init__(self, timeout=_DEFAULT_TIMEOUT):
-        '''Initialize a new `ArakoonProtocol`
-
-        :param timeout: Timeout in-between data is received from the server
-        :type timeout: `int`
-        '''
+    def __init__(self):
+        '''Initialize a new `ArakoonProtocol`'''
 
         client.Client.__init__(self)
 
         self._handlers = collections.deque()
-        self._timeout = timeout
         self._currentHandler = None
 
         self._connected = False
@@ -109,7 +101,6 @@ class ArakoonProtocol(client.Client, stateful.StatefulProtocol,
                 for data in bytes_:
                     self.transport.write(data)
 
-                self.setTimeout(self._timeout)
             finally:
                 try:
                     self._threadLock.release()
@@ -124,7 +115,6 @@ class ArakoonProtocol(client.Client, stateful.StatefulProtocol,
         self._currentHandler = None
 
         return self._responseCodeReceived, self._INITIAL_REQUEST_SIZE
-
 
     def _responseCodeReceived(self, data):
         '''Handler for server command response codes'''
@@ -158,8 +148,6 @@ class ArakoonProtocol(client.Client, stateful.StatefulProtocol,
     def _handleRequest(self, data):
         '''Handler for `Request` values emitted by a message decoder'''
 
-        self.resetTimeout()
-
         if not self._currentHandler:
             log.msg('Request data received but no handler registered')
             self.transport.loseConnection()
@@ -179,10 +167,7 @@ class ArakoonProtocol(client.Client, stateful.StatefulProtocol,
 
         if isinstance(request, protocol.Result):
             return self._handleResult(request)
-
         elif isinstance(request, protocol.Request):
-            self.setTimeout(self._timeout)
-
             return self._handleRequest, request.count
         else:
             log.err(TypeError,
@@ -207,20 +192,11 @@ class ArakoonProtocol(client.Client, stateful.StatefulProtocol,
         return self.getInitialState()
 
     def connectionLost(self, reason=twisted_protocol.connectionDone):
-        self.resetTimeout()
-
         self._connected = False
 
         self._cancelHandlers(reason)
 
         return stateful.StatefulProtocol.connectionLost(self, reason)
-
-    def timeoutConnection(self):
-        log.msg('Connection timed out')
-
-        self._cancelHandlers(defer.TimeoutError('Connection timed out'))
-
-        policies.TimeoutMixin.timeoutConnection(self)
 
     def _cancelHandlers(self, reason):
         '''Cancel all pending handlers
