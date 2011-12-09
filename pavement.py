@@ -147,7 +147,7 @@ def lint():
 def lettuce():
     '''Run Lettuce'''
 
-    import lettuce.commands
+    import lettuce.lettuce_cli
 
     specs_dir = os.path.abspath(
         os.path.join(os.path.dirname(__file__), 'test', 'features'))
@@ -156,7 +156,7 @@ def lettuce():
 
     sys.argv[:] = ['lettuce', specs_dir]
     try:
-        lettuce.commands.main([specs_dir])
+        lettuce.lettuce_cli.main([specs_dir])
     finally:
         sys.argv[:] = orig_sys_argv
 
