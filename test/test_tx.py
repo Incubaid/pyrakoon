@@ -94,7 +94,8 @@ class TestTwistedClient(unittest.TestCase):
     def test_hello(self):
         '''Test a successful 'hello' call'''
 
-        expected = ''.join(protocol.Hello('testsuite').serialize())
+        expected = ''.join(protocol.Hello('testsuite',
+            'pyrakoon_test').serialize())
         to_send = ''.join(chr(i) for i in itertools.chain(
             (0, 0, 0, 0),
             (11, 0, 0, 0),
@@ -103,7 +104,7 @@ class TestTwistedClient(unittest.TestCase):
 
         client = self._create_client(_FakeTransport(self, expected, to_send))
 
-        deferred = client.hello('testsuite')
+        deferred = client.hello('testsuite', 'pyrakoon_test')
         deferred.addCallback(
             lambda value: self.assertEquals(value, 'arakoon/1.0'))
 
@@ -142,13 +143,14 @@ class TestTwistedClient(unittest.TestCase):
     def test_disconnect(self):
         '''Test disconnect'''
 
-        expected = ''.join(protocol.Hello('testsuite').serialize())
+        expected = ''.join(protocol.Hello('testsuite',
+            'pyrakoon_test').serialize())
         # This is not enough data, so we can test disconnect
         to_send = chr(0)
 
         client = self._create_client(_FakeTransport(self, expected, to_send))
 
-        deferred = client.hello('testsuite')
+        deferred = client.hello('testsuite', 'pyrakoon_test')
         deferred.addErrback(
             lambda exc: exc.trap(error.ConnectionDone))
 

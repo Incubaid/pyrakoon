@@ -32,11 +32,12 @@ load-plugins=
 # Disable the message, report, category or checker with the given id(s). You
 # can either give multiple identifier separated by comma (,) or put this option
 # multiple time.
-disable=R0921,R0401,I0011
+disable=R0921,R0401,I0011,C0302
 
 # R0921 Abstract class not referenced
 # R0401 Cyclic import
 # I0011 Locally disabling MNNNN
+# C0302 Too many lines in module
 
 
 [REPORTS]

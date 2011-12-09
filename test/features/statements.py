@@ -35,7 +35,7 @@ def connect(step):
 
 @step(u'I say hello')
 def say_hello(step):
-    world.result = world.client.hello('Hello')
+    world.result = world.client.hello('pyrakoon_testsuite', 'pyrakoon_test')
 
 @step(u'Then I receive the correct version string')
 def validate_version_string(step):

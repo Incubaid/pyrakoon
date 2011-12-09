@@ -56,6 +56,7 @@ class FakeClient(client.Client):
             '''Handle a "hello" command'''
 
             _ = recv(protocol.STRING)
+            _ = recv(protocol.STRING)
 
             for rbytes in protocol.UNSIGNED_INTEGER.serialize(
                 protocol.RESULT_SUCCESS):
@@ -66,6 +67,7 @@ class FakeClient(client.Client):
         def handle_exists():
             '''Handle an "exists" command'''
 
+            _ = recv(protocol.BOOL)
             key = recv(protocol.STRING)
 
             for rbytes in protocol.UNSIGNED_INTEGER.serialize(
@@ -87,6 +89,7 @@ class FakeClient(client.Client):
         def handle_get():
             '''Handle a "get" command'''
 
+            _ = recv(protocol.BOOL)
             key = recv(protocol.STRING)
 
             if key not in self._values:
@@ -134,6 +137,7 @@ class FakeClient(client.Client):
         def handle_prefix_keys():
             '''Handle a "prefix_keys" command'''
 
+            _ = recv(protocol.BOOL)
             prefix = recv(protocol.STRING)
             max_elements = recv(protocol.UNSIGNED_INTEGER)
 

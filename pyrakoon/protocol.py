@@ -23,12 +23,17 @@
 
 import struct
 import operator
+import itertools
 
 from pyrakoon import utils
 
 # Result codes
 RESULT_SUCCESS = 0x0000
 '''Success return code''' #pylint: disable-msg=W0105
+
+PROTOCOL_VERSION = 0x00000001
+'''Protocol version''' #pylint: disable-msg=W0105
+
 
 # Wrappers for serialization communication
 class Request(object): #pylint: disable-msg=R0903
@@ -442,7 +447,7 @@ class Product(Type):
 class Message(object):
     '''Base type for Arakoon command messages'''
 
-    MASK = 0xfeed0000
+    MASK = 0xb1ff0000
     '''Generic command mask value''' #pylint: disable-msg=W0105
 
     TAG = None
@@ -453,6 +458,8 @@ class Message(object):
     '''Return type of the command''' #pylint: disable-msg=W0105
     DOC = None
     '''Docstring for methods exposing this command''' #pylint: disable-msg=W0105
+    HAS_ALLOW_DIRTY = False
+    '''Marker whether the command has an 'allow dirty' flag''' #pylint: disable-msg=W0105, C0301
 
     def serialize(self):
         '''Serialize the command
@@ -463,6 +470,11 @@ class Message(object):
 
         for bytes_ in UNSIGNED_INTEGER.serialize(self.TAG):
             yield bytes_
+
+        # TODO: Hack -> never allow dirty reads, for now
+        if self.HAS_ALLOW_DIRTY:
+            for bytes_ in BOOL.serialize(False):
+                yield bytes_
 
         for arg in self.ARGS:
             if len(arg) == 2:
@@ -539,10 +551,10 @@ class Message(object):
 class Hello(Message):
     '''"hello" message'''
 
-    __slots__ = '_message',
+    __slots__ = '_client_id', '_cluster_id',
 
     TAG = 0x0001 | Message.MASK
-    ARGS = ('message', STRING),
+    ARGS = ('client_id', STRING), ('cluster_id', STRING),
     RETURN_TYPE = STRING
 
     DOC = utils.format_doc('''
@@ -551,19 +563,24 @@ class Hello(Message):
         This method will return the string returned by the server when
         receiving a "hello" command.
 
-        :param message: Message to add to "hello" command
-        :type message: `str`
+        :param client_id: Identifier of the client
+        :type client_id: `str`
+        :param cluster_id: Identifier of the cluster connecting to
+            This must match the cluster configuration.
+        :type cluster_id: `str`
 
         :return: Message returned by the server
         :rtype: `str`
     ''')
 
-    def __init__(self, message):
+    def __init__(self, client_id, cluster_id):
         super(Hello, self).__init__()
 
-        self._message = message
+        self._client_id = client_id
+        self._cluster_id = cluster_id
 
-    message = property(operator.attrgetter('_message'))
+    client_id = property(operator.attrgetter('_client_id'))
+    cluster_id = property(operator.attrgetter('_cluster_id'))
 
 
 class WhoMaster(Message):
@@ -594,6 +611,7 @@ class Exists(Message):
     TAG = 0x0007 | Message.MASK
     ARGS = ('key', STRING),
     RETURN_TYPE = BOOL
+    HAS_ALLOW_DIRTY = True
 
     DOC = utils.format_doc('''
         Send an "exists" command to the server
@@ -624,6 +642,7 @@ class Get(Message):
     TAG = 0x0008 | Message.MASK
     ARGS = ('key', STRING),
     RETURN_TYPE = STRING
+    HAS_ALLOW_DIRTY = True
 
     DOC = utils.format_doc('''
         Send a "get" command to the server
@@ -709,6 +728,7 @@ class PrefixKeys(Message):
     TAG = 0x000c | Message.MASK
     ARGS = ('prefix', STRING), ('max_elements', SIGNED_INTEGER, -1),
     RETURN_TYPE = List(STRING)
+    HAS_ALLOW_DIRTY = True
 
     DOC = utils.format_doc('''
         Send a "prefix_keys" command to the server
@@ -835,6 +855,7 @@ class Range(Message):
         ('end_key', Option(STRING)), ('end_inclusive', BOOL), \
         ('max_elements', SIGNED_INTEGER, -1),
     RETURN_TYPE = List(STRING)
+    HAS_ALLOW_DIRTY = True
 
     DOC = utils.format_doc('''
         Send a "range" command to the server
@@ -889,6 +910,7 @@ class RangeEntries(Message):
         ('end_key', Option(STRING)), ('end_inclusive', BOOL), \
         ('max_elements', SIGNED_INTEGER, -1),
     RETURN_TYPE = List(Product(STRING, STRING))
+    HAS_ALLOW_DIRTY = True
 
     DOC = utils.format_doc('''
         Send a "range_entries" command to the server
@@ -940,6 +962,7 @@ class MultiGet(Message):
     TAG = 0x0011 | Message.MASK
     ARGS = ('keys', List(STRING)),
     RETURN_TYPE = List(STRING)
+    HAS_ALLOW_DIRTY = True
 
     DOC = utils.format_doc('''
         Send a "multi_get" command to the server
@@ -978,3 +1001,19 @@ class ExpectProgressPossible(Message):
         :return: Whether the master thinks progress is possible
         :rtype: `bool`
     ''')
+
+
+def build_prologue(cluster):
+    '''Return the string to send as prologue
+
+    :param cluster: Name of the cluster to which a connection is made
+    :type cluster: `str`
+
+    :return: Prologue to send to the Arakoon server
+    :rtype: `str`
+    '''
+
+    return ''.join(itertools.chain(
+        UNSIGNED_INTEGER.serialize(Message.MASK),
+        UNSIGNED_INTEGER.serialize(PROTOCOL_VERSION),
+        STRING.serialize(cluster)))

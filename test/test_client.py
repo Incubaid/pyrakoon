@@ -94,7 +94,8 @@ class TestClient(unittest.TestCase):
 
         client_ = client.Client()
 
-        self.assertRaises(RuntimeError, client_.hello, 'testsuite')
+        self.assertRaises(RuntimeError, client_.hello, 'testsuite',
+            'pyrakoon_test')
 
 
 def test_read_blocking():
@@ -103,8 +104,8 @@ def test_read_blocking():
     data = StringIO.StringIO(''.join(chr(c) for c in (
         0, 0, 0, 0, 3, 0, 0, 0, ord('x'), ord('x'), ord('x'))))
 
-    result = client.read_blocking(protocol.Hello('testsuite').receive(),
-        data.read)
+    result = client.read_blocking(protocol.Hello('testsuite',
+        'pyrakoon_test').receive(), data.read)
 
     if HAS_NOSE:
         nose.tools.assert_equals(result, 'xxx')
@@ -120,7 +121,8 @@ class TestScenario(unittest.TestCase):
 
         client_ = test.FakeClient()
 
-        self.assertEquals(client_.hello('testsuite'), test.FakeClient.VERSION)
+        self.assertEquals(client_.hello('testsuite', 'pyrakoon_test'),
+            test.FakeClient.VERSION)
         self.assertEquals(client_.who_master(), test.FakeClient.MASTER)
 
         self.assertFalse(client_.exists('key'))

@@ -38,7 +38,8 @@ DEFAULT_MESSAGING_PORT = 4933
 
 CONFIG_TEMPLATE = '''
 [global]
-nodes = arakoon_0
+cluster = arakoon_0
+cluster_id = pyrakoon_test
 
 [arakoon_0]
 ip = 127.0.0.1
@@ -88,12 +89,12 @@ class TestCompatClient(unittest.TestCase):
             fd.close()
 
         # Start server
-        command = ['arakoond', '-config', config_path, '--node', 'arakoon_0']
+        command = ['arakoon', '-config', config_path, '--node', 'arakoon_0']
         self.process = subprocess.Popen(command, close_fds=True, cwd=self.base)
 
         LOGGER.info('Arakoon running, PID %d', self.process.pid)
 
-        self.client_config = compat.ArakoonClientConfig({
+        self.client_config = compat.ArakoonClientConfig('pyrakoon_test', {
             'arakoon_0': ('127.0.0.1', DEFAULT_CLIENT_PORT),
         })
 
@@ -103,7 +104,7 @@ class TestCompatClient(unittest.TestCase):
             LOGGER.info('Attempting hello call')
             try:
                 client = self._create_client()
-                client.hello('testsuite')
+                client.hello('testsuite', 'pyrakoon_test')
                 client._client.drop_connections()
             except:
                 LOGGER.info('Call failed, sleeping')
@@ -133,12 +134,16 @@ class TestCompatClient(unittest.TestCase):
                 shutil.rmtree(self.base)
 
     def _create_client(self):
-        return compat.ArakoonClient(self.client_config)
+        client = compat.ArakoonClient(self.client_config)
+        client.hello('testsuite', 'pyrakoon_test')
+        return client
 
     def test_hello(self):
         '''Say hello to the Arakoon server'''
 
-        self.assertEquals(self._create_client().hello('testsuite'), 'xxx')
+        self.assertEquals(
+            self._create_client().hello('testsuite', 'pyrakoon_test'),
+            'Arakoon "default"')
 
     def test_who_master(self):
         '''Ask who the master is'''

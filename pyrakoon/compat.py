@@ -26,15 +26,15 @@ import random
 import select
 import socket
 import logging
-import threading
 import functools
+import threading
 
 from pyrakoon import client, errors, protocol, sequence
 
 __docformat__ = 'epytext'
 
 #pylint: disable-msg=C0111,W0142,R0912,C0103,W0212,R0913,W0201,W0231,R0903
-#pylint: disable-msg=W0223,R0201,W0703
+#pylint: disable-msg=W0223,R0201,W0703,E1121
 
 # C0111: Missing docstring
 # W0142: Used * or ** magic
@@ -48,6 +48,7 @@ __docformat__ = 'epytext'
 # W0223: Method X is abstract in class Y but not overridden
 # R0201: Method could be a function
 # W0703: Catch "Exception"
+# E1121: Too many positional arguments for function call
 
 LOGGER = logging.getLogger(__name__)
 
@@ -162,7 +163,7 @@ def _reversed_list(iter_):
 
 
 class ArakoonClient(object):
-    def __init__(self, config=None):
+    def __init__(self, config):
         """
         Constructor of an Arakoon client object.
 
@@ -175,9 +176,6 @@ class ArakoonClient(object):
             case a default L{ArakoonClientConfig} object will be created.
         """
 
-        if config is None:
-            config = ArakoonClientConfig()
-
         self._client = _ArakoonClient(config)
 
         # Keep a reference, for compatibility reasons
@@ -188,20 +186,21 @@ class ArakoonClient(object):
 
     @_convert_exceptions
     @_validate_signature('string')
-    def hello(self, msg):
+    def hello(self, clientId, clusterId='arakoon'):
         """
         Send a string of your choosing to the server.
 
         Will return the server node identifier and the version of arakoon it is running
 
-        @type msg  : string
-        @param msg : The string to send to the master node
+        @type clientId  : string
+        @type clusterId : string
+        @param clusterId : must match the cluster_id of the node
 
         @rtype: string
         @return: The master identifier and its version in a single string
         """
 
-        return self._client.hello(msg)
+        return self._client.hello(clientId, clusterId)
 
     @_convert_exceptions
     @_validate_signature('string')
@@ -593,12 +592,13 @@ ARA_CFG_NO_MASTER_RETRY = 60
 
 class ArakoonClientConfig :
 
-    def __init__ (self, nodes=None):
+    def __init__ (self, clusterId, nodes):
         """
         Constructor of an ArakoonClientConfig object
 
         The constructor takes one optional parameter 'nodes'.
         This is a dictionary containing info on the arakoon server nodes. It contains:
+
           - nodeids as keys
           - (hostname/ip, tcp port) tuples as value
         e.g. ::
@@ -607,15 +607,14 @@ class ArakoonClientConfig :
                     "myThirdNode"  : ( "127.0.0.1", 6000 ) } )
         Defaults to a single node running on localhost:4000
 
+        @type clusterId: string
+        @param clusterId: name of the cluster
         @type nodes: dict
         @param nodes: A dictionary containing the locations for the server nodes
 
         """
-        if nodes is None:
-            self._nodes = { "arakoon_0" : ( "127.0.0.1", 4000 ) }
-
-        else :
-            self._nodes = nodes
+        self.clusterId = clusterId
+        self._nodes = nodes
 
     @staticmethod
     def getNoMasterRetryPeriod() :
@@ -660,7 +659,6 @@ class ArakoonClientConfig :
     def getNodes(self):
         """
         Retrieve the dictionary with node locations
-
         @rtype: dict
         @return: Returns a dictionary mapping the node identifiers (string) to its location ( pair<string,integer> )
         """
@@ -850,7 +848,8 @@ class _ArakoonClient(client.Client):
 
         if not connection:
             node_location = self._config.getNodeLocation(node_id)
-            connection = _ClientConnection(node_location)
+            connection = _ClientConnection(node_location,
+                self._config.clusterId)
             connection.connect()
 
             self._connections[node_id] = connection
@@ -859,10 +858,11 @@ class _ArakoonClient(client.Client):
 
 
 class _ClientConnection(object):
-    def __init__(self, address):
+    def __init__(self, address, cluster_id):
         self._address = address
         self._connected = False
         self._socket = None
+        self._cluster_id = cluster_id
 
     def connect(self):
         if self._socket:
@@ -873,6 +873,10 @@ class _ClientConnection(object):
             self._socket = socket.create_connection(self._address,
                 ArakoonClientConfig.getConnectionTimeout())
             self._socket.setblocking(False)
+
+            data = protocol.build_prologue(self._cluster_id)
+            self._socket.sendall(data)
+
             self._connected = True
         except Exception:
             LOGGER.exception('Unable to connect to %s', self._address)
