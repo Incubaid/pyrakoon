@@ -1,4 +1,4 @@
-#!/bin/bash -xue
+#!/bin/bash -xe
 echo "Running specs"
 
 cd ${WORKSPACE}

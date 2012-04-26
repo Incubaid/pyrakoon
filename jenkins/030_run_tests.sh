@@ -1,4 +1,4 @@
-#!/bin/bash -xue
+#!/bin/bash -xe
 echo "Running tests"
 
 rm -f coverage.xml
