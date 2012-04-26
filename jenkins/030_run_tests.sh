@@ -6,6 +6,8 @@ rm -f coverage.xml
 cd ${WORKSPACE}
 source _env/bin/activate
 
+export PATH=${WORKSPACE}:$PATH
+
 nosetests --with-coverage --cover-package=pyrakoon --cover-erase --with-doctest --with-xunit --xunit-file=_output/test_results.xml --with-xcoverage pyrakoon test
 RESULT=$?
 
