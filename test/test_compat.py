@@ -143,7 +143,7 @@ class TestCompatClient(unittest.TestCase):
 
         self.assertEquals(
             self._create_client().hello('testsuite', 'pyrakoon_test'),
-            'Arakoon "default"')
+            'Arakoon "1.2"')
 
     def test_who_master(self):
         '''Ask who the master is'''
