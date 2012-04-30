@@ -1140,6 +1140,62 @@ class Assert(Message):
     value = property(operator.attrgetter('_value'))
 
 
+class RevRangeEntries(Message):
+    '''"rev_range_entries" message'''
+
+    __slots__ = '_begin_key', '_begin_inclusive', '_end_key', \
+        '_end_inclusive', '_max_elements',
+
+    TAG = 0x0023 | Message.MASK
+    ARGS = ('begin_key', Option(STRING)), ('begin_inclusive', BOOL), \
+        ('end_key', Option(STRING)), ('end_inclusive', BOOL), \
+        ('max_elements', INT32, -1),
+    RETURN_TYPE = List(Product(STRING, STRING))
+    HAS_ALLOW_DIRTY = True
+
+    DOC = utils.format_doc('''
+        Send a "rev_range_entries" command to the server
+
+        The operation will return a list of (key, value) tuples, for keys in
+        the reverse range between `begin_key` and `end_key`. The
+        `begin_inclusive` and `end_inclusive` flags denote whether the
+        delimiters should be included.
+
+        The `max_elements` flag can limit the number of returned items. If it is
+        negative, all matching items are returned.
+
+        :param begin_key: Begin of range
+        :type begin_key: `str`
+        :param begin_inclusive: `begin_key` is in- or exclusive
+        :type begin_inclusive: `bool`
+        :param end_key: End of range
+        :type end_key: `str`
+        :param end_inclusive: `end_key` is in- or exclusive
+        :param max_elements: Maximum number of items to return
+        :type max_elements: `int`
+
+        :return: List of matching (key, value) pairs
+        :rtype: iterable of (`str`, `str`)
+    ''')
+
+    #pylint: disable-msg=R0913
+    def __init__(self, begin_key, begin_inclusive, end_key, end_inclusive,
+        max_elements):
+        super(RevRangeEntries, self).__init__()
+
+        self._begin_key = begin_key
+        self._begin_inclusive = begin_inclusive
+        self._end_key = end_key
+        self._end_inclusive = end_inclusive
+        self._max_elements = max_elements
+
+    begin_key = property(operator.attrgetter('_begin_key'))
+    begin_inclusive = property(operator.attrgetter('_begin_inclusive'))
+    end_key = property(operator.attrgetter('_end_key'))
+    end_inclusive = property(operator.attrgetter('_end_inclusive'))
+    max_elements = property(operator.attrgetter('_max_elements'))
+
+
 def build_prologue(cluster):
     '''Return the string to send as prologue
 

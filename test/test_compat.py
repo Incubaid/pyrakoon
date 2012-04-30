@@ -277,3 +277,16 @@ class TestCompatClient(unittest.TestCase):
         client.aSSert(k, v1)
         self.assertRaises(compat.ArakoonAssertionFailed, client.aSSert, k, None)
         self.assertRaises(compat.ArakoonAssertionFailed, client.aSSert, k, v2)
+
+    def test_rev_range_entries(self):
+        client = self._create_client()
+
+        for i in xrange(100):
+            client.set('key_%d' % i, 'value_%d' % i)
+
+        result = client.rev_range_entries('key_90', True, 'key_80', False, 5)
+
+        self.assertEquals(result,
+            [('key_90', 'value_90'), ('key_9', 'value_9'),
+             ('key_89', 'value_89'), ('key_88', 'value_88'),
+             ('key_87', 'value_87')])

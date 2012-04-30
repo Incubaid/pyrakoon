@@ -34,7 +34,7 @@ from pyrakoon import client, errors, protocol, sequence
 __docformat__ = 'epytext'
 
 #pylint: disable-msg=C0111,W0142,R0912,C0103,W0212,R0913,W0201,W0231,R0903
-#pylint: disable-msg=W0223,R0201,W0703,E1121
+#pylint: disable-msg=W0223,R0201,W0703,E1121,R0904
 
 # C0111: Missing docstring
 # W0142: Used * or ** magic
@@ -49,6 +49,7 @@ __docformat__ = 'epytext'
 # R0201: Method could be a function
 # W0703: Catch "Exception"
 # E1121: Too many positional arguments for function call
+# R0904: Too many public methods
 
 LOGGER = logging.getLogger(__name__)
 
@@ -485,6 +486,29 @@ class ArakoonClient(object):
         """
 
         self._client.assert_(key, vo)
+
+    @_convert_exceptions
+    def rev_range_entries(self,
+                          beginKey, beginKeyIncluded,
+                          endKey,  endKeyIncluded,
+                          maxElements= -1):
+        """
+        Performs a reverse range query on the store, returning a sorted (in reverse order) list of key value pairs.
+        @type beginKey: string option
+        @type endKey :string option
+        @type beginKeyIncluded: boolean
+        @type endKeyIncluded: boolean
+        @type maxElements: integer
+        @param beginKey: higher boundary of the requested range
+        @param endKey: lower boundary of the requested range
+        @param maxElements: maximum number of key-value pairs to return. Negative means 'all'. Defaults to -1
+        @rtype : list of (string,string)
+        """
+
+        result = self._client.rev_range_entries(beginKey, beginKeyIncluded,
+            endKey, endKeyIncluded, maxElements)
+
+        return _reversed_list((key, value) for key, value in result)
 
 
     def _dropConnections(self):
