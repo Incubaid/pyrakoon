@@ -72,7 +72,7 @@ class ArakoonProtocol(client.Client, stateful.StatefulProtocol,
     _PauseableMixin):
     '''Protocol to access an Arakoon server'''
 
-    _INITIAL_REQUEST_SIZE = protocol.UNSIGNED_INTEGER.PACKER.size
+    _INITIAL_REQUEST_SIZE = protocol.UINT32.PACKER.size
 
     def __init__(self):
         '''Initialize a new `ArakoonProtocol`'''

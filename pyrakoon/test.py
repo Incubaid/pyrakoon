@@ -50,7 +50,7 @@ class FakeClient(client.Client):
         # Helper
         recv = lambda type_: client.read_blocking(type_.receive(), bytes_)
 
-        command = recv(protocol.UNSIGNED_INTEGER)
+        command = recv(protocol.UINT32)
 
         def handle_hello():
             '''Handle a "hello" command'''
@@ -58,7 +58,7 @@ class FakeClient(client.Client):
             _ = recv(protocol.STRING)
             _ = recv(protocol.STRING)
 
-            for rbytes in protocol.UNSIGNED_INTEGER.serialize(
+            for rbytes in protocol.UINT32.serialize(
                 protocol.RESULT_SUCCESS):
                 yield rbytes
             for rbytes in protocol.STRING.serialize(self.VERSION):
@@ -70,7 +70,7 @@ class FakeClient(client.Client):
             _ = recv(protocol.BOOL)
             key = recv(protocol.STRING)
 
-            for rbytes in protocol.UNSIGNED_INTEGER.serialize(
+            for rbytes in protocol.UINT32.serialize(
                 protocol.RESULT_SUCCESS):
                 yield rbytes
             for rbytes in protocol.BOOL.serialize(key in self._values):
@@ -79,7 +79,7 @@ class FakeClient(client.Client):
         def handle_who_master():
             '''Handle a "who_master" command'''
 
-            for rbytes in protocol.UNSIGNED_INTEGER.serialize(
+            for rbytes in protocol.UINT32.serialize(
                 protocol.RESULT_SUCCESS):
                 yield rbytes
             for rbytes in protocol.Option(protocol.STRING).serialize(
@@ -93,13 +93,13 @@ class FakeClient(client.Client):
             key = recv(protocol.STRING)
 
             if key not in self._values:
-                for rbytes in protocol.UNSIGNED_INTEGER.serialize(
+                for rbytes in protocol.UINT32.serialize(
                     errors.NotFound.CODE):
                     yield rbytes
                 for rbytes in protocol.STRING.serialize(key):
                     yield rbytes
             else:
-                for rbytes in protocol.UNSIGNED_INTEGER.serialize(
+                for rbytes in protocol.UINT32.serialize(
                     protocol.RESULT_SUCCESS):
                     yield rbytes
                 for rbytes in protocol.STRING.serialize(self._values[key]):
@@ -113,7 +113,7 @@ class FakeClient(client.Client):
 
             self._values[key] = value
 
-            for rbytes in protocol.UNSIGNED_INTEGER.serialize(
+            for rbytes in protocol.UINT32.serialize(
                 protocol.RESULT_SUCCESS):
                 yield rbytes
 
@@ -123,14 +123,14 @@ class FakeClient(client.Client):
             key = recv(protocol.STRING)
 
             if key not in self._values:
-                for rbytes in protocol.UNSIGNED_INTEGER.serialize(
+                for rbytes in protocol.UINT32.serialize(
                     errors.NotFound.CODE):
                     yield rbytes
                 for rbytes in protocol.STRING.serialize(key):
                     yield rbytes
             else:
                 del self._values[key]
-                for rbytes in protocol.UNSIGNED_INTEGER.serialize(
+                for rbytes in protocol.UINT32.serialize(
                     protocol.RESULT_SUCCESS):
                     yield rbytes
 
@@ -139,14 +139,14 @@ class FakeClient(client.Client):
 
             _ = recv(protocol.BOOL)
             prefix = recv(protocol.STRING)
-            max_elements = recv(protocol.UNSIGNED_INTEGER)
+            max_elements = recv(protocol.UINT32)
 
             matches = [key for key in self._values.iterkeys()
                 if key.startswith(prefix)]
 
             matches = matches if max_elements < 0 else matches[:max_elements]
 
-            for rbytes in protocol.UNSIGNED_INTEGER.serialize(
+            for rbytes in protocol.UINT32.serialize(
                 protocol.RESULT_SUCCESS):
                 yield rbytes
 
@@ -162,7 +162,7 @@ class FakeClient(client.Client):
 
             # Key doesn't exist and test_value is not None -> NotFound
             if key not in self._values and test_value is not None:
-                for rbytes in protocol.UNSIGNED_INTEGER.serialize(
+                for rbytes in protocol.UINT32.serialize(
                     errors.NotFound.CODE):
                     yield rbytes
                 for rbytes in protocol.STRING.serialize(key):
@@ -174,7 +174,7 @@ class FakeClient(client.Client):
             if key not in self._values and test_value is None:
                 self._values[key] = set_value
 
-                for rbytes in protocol.UNSIGNED_INTEGER.serialize(
+                for rbytes in protocol.UINT32.serialize(
                     protocol.RESULT_SUCCESS):
                     yield rbytes
                 for rbytes in protocol.Option(protocol.STRING).serialize(None):
@@ -193,7 +193,7 @@ class FakeClient(client.Client):
                     del self._values[key]
 
             # Return original value
-            for rbytes in protocol.UNSIGNED_INTEGER.serialize(
+            for rbytes in protocol.UINT32.serialize(
                 protocol.RESULT_SUCCESS):
                 yield rbytes
 

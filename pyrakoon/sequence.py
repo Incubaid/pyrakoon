@@ -49,7 +49,7 @@ class Step(object):
         :rtype: iterable of `str`
         '''
 
-        for bytes_ in protocol.UNSIGNED_INTEGER.serialize(self.TAG):
+        for bytes_ in protocol.UINT32.serialize(self.TAG):
             yield bytes_
 
         for name, type_ in self.ARGS:
@@ -121,10 +121,10 @@ class Sequence(Step):
     steps = property(operator.attrgetter('_steps'))
 
     def serialize(self):
-        for bytes_ in protocol.UNSIGNED_INTEGER.serialize(self.TAG):
+        for bytes_ in protocol.UINT32.serialize(self.TAG):
             yield bytes_
 
-        for bytes_ in protocol.UNSIGNED_INTEGER.serialize(len(self.steps)):
+        for bytes_ in protocol.UINT32.serialize(len(self.steps)):
             yield bytes_
 
         for step in self.steps:

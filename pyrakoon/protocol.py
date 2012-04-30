@@ -129,13 +129,13 @@ class String(Type):
     def serialize(self, value):
         length = len(value)
 
-        for bytes_ in UNSIGNED_INTEGER.serialize(length):
+        for bytes_ in UINT32.serialize(length):
             yield bytes_
 
         yield struct.pack('<%ds' % length, value)
 
     def receive(self):
-        length_receiver = UNSIGNED_INTEGER.receive()
+        length_receiver = UINT32.receive()
         request = length_receiver.next() #pylint: disable-msg=E1101
 
         while isinstance(request, Request):
@@ -161,9 +161,17 @@ STRING = String()
 class UnsignedInteger(Type):
     '''Unsigned integer type'''
 
-    PACKER = struct.Struct('<I')
+    def __init__(self, bits, pack):
+        '''Initialize an unsigned integer type
 
-    MAX_INT = (2 ** 32) - 1
+        :param bits: Bits containing the value
+        :type bits: `int`
+        :param pack: Struct type, passed to `struct.Struct`
+        :type pack: `str`
+        '''
+
+        self.MAX_INT = (2 ** bits) - 1
+        self.PACKER = struct.Struct(pack)
 
     def check(self, value):
         if not isinstance(value, (int, long)):
@@ -175,15 +183,24 @@ class UnsignedInteger(Type):
         if value > self.MAX_INT:
             raise ValueError('Integer overflow')
 
-UNSIGNED_INTEGER = UnsignedInteger()
+UINT32 = UnsignedInteger(32, '<I')
+UINT64 = UnsignedInteger(64, '<Q')
 
 
 class SignedInteger(Type):
     '''Signed integer type'''
 
-    PACKER = struct.Struct('<i')
+    def __init__(self, bits, pack):
+        '''Initialize an unsigned integer type
 
-    MAX_INT = ((2 ** 32) / 2) - 1
+        :param bits: Bits containing the value
+        :type bits: `int`
+        :param pack: Struct type, passed to `struct.Struct`
+        :type pack: `str`
+        '''
+
+        self.MAX_INT = ((2 ** bits) / 2) - 1
+        self.PACKER = struct.Struct(pack)
 
     def check(self, value):
         if not isinstance(value, (int, long)):
@@ -192,8 +209,8 @@ class SignedInteger(Type):
         if abs(value) > self.MAX_INT:
             raise ValueError('Integer overflow')
 
-SIGNED_INTEGER = SignedInteger()
-
+INT32 = SignedInteger(32, '<i')
+INT64 = SignedInteger(64, '<q')
 
 class Bool(Type):
     '''Bool type'''
@@ -353,7 +370,7 @@ class List(Type):
     def serialize(self, value):
         values = tuple(value)
 
-        for bytes_ in UNSIGNED_INTEGER.serialize(len(values)):
+        for bytes_ in UINT32.serialize(len(values)):
             yield bytes_
 
         for value in values:
@@ -361,7 +378,7 @@ class List(Type):
                 yield bytes_
 
     def receive(self):
-        count_receiver = UNSIGNED_INTEGER.receive()
+        count_receiver = UINT32.receive()
         request = count_receiver.next() #pylint: disable-msg=E1101
 
         while isinstance(request, Request):
@@ -468,7 +485,7 @@ class Message(object):
         :rtype: iterable of `str`
         '''
 
-        for bytes_ in UNSIGNED_INTEGER.serialize(self.TAG):
+        for bytes_ in UINT32.serialize(self.TAG):
             yield bytes_
 
         # TODO: Hack -> never allow dirty reads, for now
@@ -508,7 +525,7 @@ class Message(object):
 
         from pyrakoon import errors
 
-        code_receiver = UNSIGNED_INTEGER.receive()
+        code_receiver = UINT32.receive()
         request = code_receiver.next() #pylint: disable-msg=E1101
 
         while isinstance(request, Request):
@@ -726,7 +743,7 @@ class PrefixKeys(Message):
     __slots__ = '_prefix', '_max_elements',
 
     TAG = 0x000c | Message.MASK
-    ARGS = ('prefix', STRING), ('max_elements', SIGNED_INTEGER, -1),
+    ARGS = ('prefix', STRING), ('max_elements', INT32, -1),
     RETURN_TYPE = List(STRING)
     HAS_ALLOW_DIRTY = True
 
@@ -835,7 +852,7 @@ class Sequence(Message):
     sequence = property(operator.attrgetter('_sequence'))
 
     def serialize(self):
-        for bytes_ in UNSIGNED_INTEGER.serialize(self.TAG):
+        for bytes_ in UINT32.serialize(self.TAG):
             yield bytes_
 
         sequence_bytes = ''.join(self.sequence.serialize())
@@ -853,7 +870,7 @@ class Range(Message):
     TAG = 0x000b | Message.MASK
     ARGS = ('begin_key', Option(STRING)), ('begin_inclusive', BOOL), \
         ('end_key', Option(STRING)), ('end_inclusive', BOOL), \
-        ('max_elements', SIGNED_INTEGER, -1),
+        ('max_elements', INT32, -1),
     RETURN_TYPE = List(STRING)
     HAS_ALLOW_DIRTY = True
 
@@ -908,7 +925,7 @@ class RangeEntries(Message):
     TAG = 0x000f | Message.MASK
     ARGS = ('begin_key', Option(STRING)), ('begin_inclusive', BOOL), \
         ('end_key', Option(STRING)), ('end_inclusive', BOOL), \
-        ('max_elements', SIGNED_INTEGER, -1),
+        ('max_elements', INT32, -1),
     RETURN_TYPE = List(Product(STRING, STRING))
     HAS_ALLOW_DIRTY = True
 
@@ -1014,6 +1031,6 @@ def build_prologue(cluster):
     '''
 
     return ''.join(itertools.chain(
-        UNSIGNED_INTEGER.serialize(Message.MASK),
-        UNSIGNED_INTEGER.serialize(PROTOCOL_VERSION),
+        UINT32.serialize(Message.MASK),
+        UINT32.serialize(PROTOCOL_VERSION),
         STRING.serialize(cluster)))

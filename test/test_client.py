@@ -53,7 +53,7 @@ class TestValidateTypes(unittest.TestCase):
         '''Test `validate_types` if one incorrect argument is provided'''
 
         run_test = lambda value: client.validate_types(
-            (('i', protocol.UNSIGNED_INTEGER), ), (value, ))
+            (('i', protocol.UINT32), ), (value, ))
 
         self.assertRaises(ValueError, run_test, -1)
         self.assertRaises(TypeError, run_test, '1')
@@ -63,7 +63,7 @@ class TestValidateTypes(unittest.TestCase):
 
         client.validate_types((
             ('name', protocol.STRING),
-            ('age', protocol.Option(protocol.UNSIGNED_INTEGER)),
+            ('age', protocol.Option(protocol.UINT32)),
         ), ('name', None, ))
 
     def test_multiple_incorrect_arguments(self):
@@ -71,7 +71,7 @@ class TestValidateTypes(unittest.TestCase):
 
         run_test = lambda value: client.validate_types((
             ('name', protocol.STRING),
-            ('age', protocol.Option(protocol.UNSIGNED_INTEGER)),
+            ('age', protocol.Option(protocol.UINT32)),
         ), ('name', value, ))
 
         self.assertRaises(ValueError, run_test, -1)

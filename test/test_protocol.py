@@ -58,7 +58,7 @@ class TestTypeCheck(unittest.TestCase):
     def test_unsigned_integer(self):
         '''Test unsigned integer checks'''
 
-        self._run_test(protocol.UNSIGNED_INTEGER,
+        self._run_test(protocol.UINT32,
             (0, True),
             (1, True),
             ((2 ** 32) - 1, True),
@@ -71,10 +71,23 @@ class TestTypeCheck(unittest.TestCase):
             (None, False)
         )
 
+        self._run_test(protocol.UINT64,
+            (0, True),
+            (1, True),
+            ((2 ** 64) - 1, True),
+
+            (-1, False),
+            (2 ** 64, False),
+
+            ('', False),
+            (1.1, False),
+            (None, False)
+        )
+
     def test_signed_integer(self):
         '''Test signed integer checks'''
 
-        self._run_test(protocol.SIGNED_INTEGER,
+        self._run_test(protocol.INT32,
             (0, True),
             (1, True),
             (-1, True),
@@ -83,6 +96,21 @@ class TestTypeCheck(unittest.TestCase):
 
             (((2 ** 32) / 2), False),
             ((((2 ** 32) / 2)) * (-1), False),
+
+            ('', False),
+            (1.1, False),
+            (None, False)
+        )
+
+        self._run_test(protocol.INT64,
+            (0, True),
+            (1, True),
+            (-1, True),
+            (((2 ** 64) / 2) - 1, True),
+            ((((2 ** 64) / 2) - 1) * (-1), True),
+
+            (((2 ** 64) / 2), False),
+            ((((2 ** 64) / 2)) * (-1), False),
 
             ('', False),
             (1.1, False),
@@ -162,7 +190,7 @@ class TestTypeCheck(unittest.TestCase):
     def test_product(self):
         '''Test product checks'''
 
-        type_ = protocol.Product(protocol.UNSIGNED_INTEGER, protocol.STRING)
+        type_ = protocol.Product(protocol.UINT32, protocol.STRING)
 
         self._run_test(type_,
             ((0, 'abc'), True),
@@ -180,9 +208,9 @@ class TestTypeCheck(unittest.TestCase):
         '''Test checking of a complex, nested type'''
 
         type_ = protocol.Product(
-            protocol.UNSIGNED_INTEGER, protocol.List(protocol.STRING),
+            protocol.UINT32, protocol.List(protocol.STRING),
             protocol.Option(protocol.Product(
-                protocol.UNSIGNED_INTEGER, protocol.STRING)))
+                protocol.UINT32, protocol.STRING)))
 
         self._run_test(type_,
             ((0, ('abc', 'def',), (1, 'abc')), True),
@@ -226,18 +254,28 @@ class TestTypeSerialization(unittest.TestCase):
     def test_unsigned_integer(self):
         '''Test encoding and decoding of unsigned integer values'''
 
-        self._run_test(protocol.UNSIGNED_INTEGER, 0)
-        self._run_test(protocol.UNSIGNED_INTEGER, 1)
-        self._run_test(protocol.UNSIGNED_INTEGER, (2 ** 32) - 1)
+        self._run_test(protocol.UINT32, 0)
+        self._run_test(protocol.UINT32, 1)
+        self._run_test(protocol.UINT32, (2 ** 32) - 1)
+
+        self._run_test(protocol.UINT64, 0)
+        self._run_test(protocol.UINT64, 1)
+        self._run_test(protocol.UINT64, (2 ** 64) - 1)
 
     def test_signed_integer(self):
         '''Test encoding and decoding of signed integer values'''
 
-        self._run_test(protocol.SIGNED_INTEGER, 0)
-        self._run_test(protocol.SIGNED_INTEGER, 1)
-        self._run_test(protocol.SIGNED_INTEGER, -1)
-        self._run_test(protocol.SIGNED_INTEGER, ((2 ** 32) / 2) - 1)
-        self._run_test(protocol.SIGNED_INTEGER, (((2 ** 32) / 2) - 1) * (-1))
+        self._run_test(protocol.INT32, 0)
+        self._run_test(protocol.INT32, 1)
+        self._run_test(protocol.INT32, -1)
+        self._run_test(protocol.INT32, ((2 ** 32) / 2) - 1)
+        self._run_test(protocol.INT32, (((2 ** 32) / 2) - 1) * (-1))
+
+        self._run_test(protocol.INT64, 0)
+        self._run_test(protocol.INT64, 1)
+        self._run_test(protocol.INT64, -1)
+        self._run_test(protocol.INT64, ((2 ** 64) / 2) - 1)
+        self._run_test(protocol.INT64, (((2 ** 64) / 2) - 1) * (-1))
 
     def test_bool(self):
         '''Test encoding and decoding of bool values'''
@@ -274,7 +312,7 @@ class TestTypeSerialization(unittest.TestCase):
     def test_option(self):
         '''Test encoding and decoding of option values'''
 
-        type_ = protocol.Option(protocol.UNSIGNED_INTEGER)
+        type_ = protocol.Option(protocol.UINT32)
 
         self._run_test(type_, None)
         self._run_test(type_, 1)
@@ -300,9 +338,9 @@ class TestTypeSerialization(unittest.TestCase):
         '''Test encoding and decoding of a complex type value'''
 
         type_ = protocol.Product(
-            protocol.UNSIGNED_INTEGER, protocol.List(protocol.STRING),
+            protocol.UINT32, protocol.List(protocol.STRING),
             protocol.Option(protocol.Product(
-                protocol.UNSIGNED_INTEGER, protocol.STRING)))
+                protocol.UINT32, protocol.STRING)))
 
         def handler(value):
             return (value[0], tuple(value[1]), value[2])
@@ -358,7 +396,7 @@ class TestExceptions(unittest.TestCase):
         return request.value
 
     def _run_test(self, code, expected_type):
-        code_ = ''.join(protocol.UNSIGNED_INTEGER.serialize(code))
+        code_ = ''.join(protocol.UINT32.serialize(code))
         message = ''.join(protocol.STRING.serialize('Exception message'))
 
         result = '%s%s' % (code_, message)
@@ -370,6 +408,6 @@ class TestExceptions(unittest.TestCase):
 
         code = max(errors.ERROR_MAP.iterkeys()) + 1
 
-        protocol.UNSIGNED_INTEGER.check(code)
+        protocol.UINT32.check(code)
 
         self._run_test(code, errors.ArakoonError)
