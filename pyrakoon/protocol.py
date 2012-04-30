@@ -1072,6 +1072,38 @@ class UserFunction(Message):
     argument = property(operator.attrgetter('_argument'))
 
 
+class Confirm(Message):
+    '''"confirm" message'''
+
+    __slots__ = '_key', '_value',
+
+    TAG = 0x001c | Message.MASK
+    ARGS = ('key', STRING), ('value', STRING),
+    RETURN_TYPE = UNIT
+
+    DOC = utils.format_doc('''
+        Send a "confirm" command to the server
+
+        This method sets a given key to a given value on the server, unless
+        the value bound to the key is already equal to the provided value, in
+        which case the action becomes a no-op.
+
+        :param key: Key to set
+        :type key: `str`
+        :param value: Value to set
+        :type value: `str`
+    ''')
+
+    def __init__(self, key, value):
+        super(Confirm, self).__init__()
+
+        self._key = key
+        self._value = value
+
+    key = property(operator.attrgetter('_key'))
+    value = property(operator.attrgetter('_value'))
+
+
 def build_prologue(cluster):
     '''Return the string to send as prologue
 

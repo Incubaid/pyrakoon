@@ -463,6 +463,16 @@ class ArakoonClient(object):
 
         return self._client.user_function(name, argument)
 
+    @_convert_exceptions
+    def confirm(self, key, value):
+        """
+        Do nothing if the value associated with the given key is this value;
+        otherwise, behave as set(key,value)
+        @rtype: void
+        """
+
+        self._client.confirm(key, value)
+
 
     def _dropConnections(self):
         return self._client.drop_connections()

@@ -249,3 +249,17 @@ class TestCompatClient(unittest.TestCase):
 
         r = client.userFunction('_arakoon_builtin_reverse', None)
         self.assertEqual(r, None)
+
+    def test_confirm(self):
+        client = self._create_client()
+
+        k = 'key'
+        v1 = 'value1'
+        v2 = 'value2'
+
+        client.set(k, v1)
+        self.assertEqual(client.get(k), v1)
+        client.confirm(k, v1)
+        self.assertEqual(client.get(k), v1)
+        client.confirm(k, v2)
+        self.assertEqual(client.get(k), v2)
