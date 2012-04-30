@@ -170,8 +170,10 @@ class UnsignedInteger(Type):
         :type pack: `str`
         '''
 
-        self.MAX_INT = (2 ** bits) - 1
-        self.PACKER = struct.Struct(pack)
+        super(UnsignedInteger, self).__init__()
+
+        self.MAX_INT = (2 ** bits) - 1 #pylint: disable-msg=C0103
+        self.PACKER = struct.Struct(pack) #pylint: disable-msg=C0103
 
     def check(self, value):
         if not isinstance(value, (int, long)):
@@ -199,8 +201,10 @@ class SignedInteger(Type):
         :type pack: `str`
         '''
 
-        self.MAX_INT = ((2 ** bits) / 2) - 1
-        self.PACKER = struct.Struct(pack)
+        super(SignedInteger, self).__init__()
+
+        self.MAX_INT = ((2 ** bits) / 2) - 1 #pylint: disable-msg=C0103
+        self.PACKER = struct.Struct(pack) #pylint: disable-msg=C0103
 
     def check(self, value):
         if not isinstance(value, (int, long)):
