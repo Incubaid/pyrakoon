@@ -449,6 +449,20 @@ class ArakoonClient(object):
 
         return self._client.get_key_count()
 
+    @_convert_exceptions
+    def userFunction(self, name, argument):
+        '''Call a user-defined function on the server
+        @param name: Name of user function
+        @type name: string
+        @param argument: Optional function argument
+        @type argument: string option
+
+        @return: Function result
+        @rtype: string option
+        '''
+
+        return self._client.user_function(name, argument)
+
 
     def _dropConnections(self):
         return self._client.drop_connections()

@@ -1039,6 +1039,39 @@ class GetKeyCount(Message):
     ''')
 
 
+class UserFunction(Message):
+    '''"user_function" message'''
+
+    __slots__ = '_function', '_arg',
+
+    TAG = 0x0015 | Message.MASK
+    ARGS = ('function', STRING), ('argument', Option(STRING)),
+    RETURN_TYPE = Option(STRING)
+
+    DOC = utils.format_doc('''
+        Send a "user_function" command to the server
+
+        This method returns the result of the function invocation.
+
+        :param function: Name of the user function to invoke
+        :type function: `str`
+        :param argument: Argument to pass to the function
+        :type argument: `str` or `None`
+
+        :return: Result of the function invocation
+        :rtype: `str` or `None`
+    ''')
+
+    def __init__(self, function, argument):
+        super(UserFunction, self).__init__()
+
+        self._function = function
+        self._argument = argument
+
+    function = property(operator.attrgetter('_function'))
+    argument = property(operator.attrgetter('_argument'))
+
+
 def build_prologue(cluster):
     '''Return the string to send as prologue
 

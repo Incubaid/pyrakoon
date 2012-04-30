@@ -29,6 +29,8 @@ import tempfile
 import unittest
 import subprocess
 
+import nose
+
 from pyrakoon import compat
 
 LOGGER = logging.getLogger(__name__)
@@ -234,3 +236,16 @@ class TestCompatClient(unittest.TestCase):
         self.assertEqual(client.getKeyCount(), 1)
         client.set('key2', 'value')
         self.assertEqual(client.getKeyCount(), 2)
+
+    def test_user_function(self):
+        # This is not supported in 'standard' Arakoon
+        raise nose.SkipTest
+
+        client = self._create_client()
+
+        s = 'abcdef'
+        r = client.userFunction('_arakoon_builtin_reverse', s)
+        self.assertEqual(r, s[::-1])
+
+        r = client.userFunction('_arakoon_builtin_reverse', None)
+        self.assertEqual(r, None)

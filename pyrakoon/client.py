@@ -160,6 +160,10 @@ class Client(object):
     def get_key_count(self): #pylint: disable-msg=R0201
         assert False
 
+    @call(protocol.UserFunction)
+    def user_function(self): #pylint: disable-msg=R0201
+        assert False
+
     __getitem__ = get
     __setitem__ = set
     __delitem__ = delete
