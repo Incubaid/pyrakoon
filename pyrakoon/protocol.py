@@ -1108,6 +1108,38 @@ class Confirm(Message):
     value = property(operator.attrgetter('_value'))
 
 
+class Assert(Message):
+    '''"assert" message'''
+
+    __slots__ = '_key', '_value',
+
+    TAG = 0x0016 | Message.MASK
+    ARGS = ('key', STRING), ('value', Option(STRING)),
+    RETURN_TYPE = UNIT
+    HAS_ALLOW_DIRTY = True
+
+    DOC = utils.format_doc('''
+        Send an 'assert' command to the server
+
+        `assert key vo` throws an exception if the value associated with the
+        key is not what was expected.
+
+        :param key: Key to check
+        :type key: `str`
+        :param value: Optional value to compare
+        :type value: `str` or `None`
+    ''')
+
+    def __init__(self, key, value):
+        super(Assert, self).__init__()
+
+        self._key = key
+        self._value = value
+
+    key = property(operator.attrgetter('_key'))
+    value = property(operator.attrgetter('_value'))
+
+
 def build_prologue(cluster):
     '''Return the string to send as prologue
 

@@ -168,6 +168,10 @@ class Client(object):
     def confirm(self): #pylint: disable-msg=R0201
         assert False
 
+    @call(protocol.Assert)
+    def assert_(self): #pylint: disable-msg=R0201
+        assert False
+
     __getitem__ = get
     __setitem__ = set
     __delitem__ = delete

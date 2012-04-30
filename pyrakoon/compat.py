@@ -473,6 +473,19 @@ class ArakoonClient(object):
 
         self._client.confirm(key, value)
 
+    @_convert_exceptions
+    def aSSert(self, key, vo):
+        """
+        verifies the value for key to match vo
+        @type key: string
+        @type vo: string_option
+        @param key: the key to be verified
+        @param vo: what the value should be (can be None)
+        @rtype: void
+        """
+
+        self._client.assert_(key, vo)
+
 
     def _dropConnections(self):
         return self._client.drop_connections()
@@ -549,6 +562,9 @@ class ArakoonInvalidArguments(ArakoonException, TypeError):
 
         ArakoonException.__init__(self, self._msg)
 
+class ArakoonAssertionFailed(ArakoonException):
+    _msg = 'Assert did not yield expected result'
+
 
 def _convert_exception(exc):
     '''Convert an exception to a suitable `ArakoonException`
@@ -577,6 +593,10 @@ def _convert_exception(exc):
     elif isinstance(exc, (TypeError, ValueError)):
         exc_ = ArakoonInvalidArguments(exc.message, None)
         LOGGER.exception(exc)
+        exc_.inner = exc
+        return exc_
+    elif isinstance(exc, errors.AssertionFailed):
+        exc_ = ArakoonAssertionFailed(exc.message)
         exc_.inner = exc
         return exc_
     elif isinstance(exc, errors.ArakoonError):

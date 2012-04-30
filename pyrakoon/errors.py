@@ -54,6 +54,12 @@ class NotFound(KeyError, ArakoonError): #pylint: disable-msg=R0901
 
     CODE = 0x0005
 
+class AssertionFailed(ArakoonError):
+    '''Assertion failed'''
+
+    CODE = 0x0007
+
+
 class UnknownFailure(ArakoonError):
     '''Unknown failure'''
 
