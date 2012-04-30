@@ -1020,6 +1020,25 @@ class ExpectProgressPossible(Message):
     ''')
 
 
+class GetKeyCount(Message):
+    '''"get_key_count" message'''
+
+    __slots__ = ()
+
+    TAG = 0x001a | Message.MASK
+    ARGS = ()
+    RETURN_TYPE = UINT64
+
+    DOC = utils.format_doc('''
+        Send a "get_key_count" command to the server
+
+        This method returns the number of items stored in Arakoon.
+
+        :return: Number of items stored in the database
+        :rtype: `int`
+    ''')
+
+
 def build_prologue(cluster):
     '''Return the string to send as prologue
 

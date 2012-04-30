@@ -224,3 +224,13 @@ class TestCompatClient(unittest.TestCase):
         sequence.addDelete('skey2')
 
         self.assertRaises(compat.ArakoonNotFound, client.sequence, sequence)
+
+    def test_get_key_count(self):
+        client = self._create_client()
+
+        self.assertEqual(client.getKeyCount(), 0)
+        client.set('key', 'value')
+        print client.getKeyCount()
+        self.assertEqual(client.getKeyCount(), 1)
+        client.set('key2', 'value')
+        self.assertEqual(client.getKeyCount(), 2)

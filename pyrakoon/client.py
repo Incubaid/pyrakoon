@@ -156,6 +156,10 @@ class Client(object):
     def expect_progress_possible(self): #pylint: disable-msg=R0201
         assert False
 
+    @call(protocol.GetKeyCount)
+    def get_key_count(self): #pylint: disable-msg=R0201
+        assert False
+
     __getitem__ = get
     __setitem__ = set
     __delitem__ = delete

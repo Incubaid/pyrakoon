@@ -439,6 +439,16 @@ class ArakoonClient(object):
         except ArakoonNoMaster:
             return False
 
+    @_convert_exceptions
+    def getKeyCount(self):
+        """
+        Retrieve the number of keys in the database on the master
+
+        @rtype: int
+        """
+
+        return self._client.get_key_count()
+
 
     def _dropConnections(self):
         return self._client.drop_connections()
