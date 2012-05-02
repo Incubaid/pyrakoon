@@ -346,12 +346,12 @@ class ArakoonClient(object):
 
         return _reversed_list(result)
 
-    @utils.update_argspec('self', 'first', 'finc', 'last', 'linc',
-        ('maxElements', -1))
+    @utils.update_argspec('self', 'beginKey', 'beginKeyIncluded', 'endKey',
+        'endKeyIncluded', ('maxElements', -1))
     @_convert_exceptions
     @_validate_signature('string_option', 'bool', 'string_option', 'bool',
         'int')
-    def range_entries(self, first, finc, last, linc, maxElements=-1):
+    def range_entries(self, beginKey, beginKeyIncluded, endKey, endKeyIncluded, maxElements=-1):
         """
         Perform a range query on the store, retrieving the set of matching key-value pairs
 
@@ -374,8 +374,8 @@ class ArakoonClient(object):
         @return: Returns a list containing all matching key-value pairs
         """
 
-        result = self._client.range_entries(first, finc, last, linc,
-            maxElements)
+        result = self._client.range_entries(beginKey, beginKeyIncluded, endKey,
+            endKeyIncluded, maxElements)
 
         return _reversed_list((key, value) for key, value in result)
 
