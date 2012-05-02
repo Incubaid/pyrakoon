@@ -561,11 +561,11 @@ class StatisticsType(Type):
                 else:
                     raise ValueError('Unknown named field type %d' % type_)
 
-                request = value_receiver.next() #pylint: disable-msg=E1101
+                request = value_receiver.next() #pylint: disable-msg=E1103
 
                 while isinstance(request, Request):
                     value = yield request
-                    #pylint: disable-msg=E1101
+                    #pylint: disable-msg=E1103
                     request = value_receiver.send(value)
 
                 if not isinstance(request, Result):
