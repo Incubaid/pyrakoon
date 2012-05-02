@@ -494,11 +494,11 @@ class StatisticsType(Type):
 
     def receive(self):
         buffer_receiver = STRING.receive()
-        request = buffer_receiver.next()
+        request = buffer_receiver.next() #pylint: disable-msg=E1101
 
         while isinstance(request, Request):
             value = yield request
-            request = buffer_receiver.send(value)
+            request = buffer_receiver.send(value) #pylint: disable-msg=E1101
 
         if not isinstance(request, Result):
             raise TypeError
@@ -523,10 +523,11 @@ class StatisticsType(Type):
             @classmethod
             def receive(cls):
                 type_receiver = INT32.receive()
-                request = type_receiver.next()
+                request = type_receiver.next() #pylint: disable-msg=E1101
 
                 while isinstance(request, Request):
                     value = yield request
+                    #pylint: disable-msg=E1101
                     request = type_receiver.send(value)
 
                 if not isinstance(request, Result):
@@ -535,10 +536,11 @@ class StatisticsType(Type):
                 type_ = request.value
 
                 name_receiver = STRING.receive()
-                request = name_receiver.next()
+                request = name_receiver.next() #pylint: disable-msg=E1101
 
                 while isinstance(request, Request):
                     value = yield request
+                    #pylint: disable-msg=E1101
                     request = name_receiver.send(value)
 
                 if not isinstance(request, Result):
@@ -559,10 +561,11 @@ class StatisticsType(Type):
                 else:
                     raise ValueError('Unknown named field type %d' % type_)
 
-                request = value_receiver.next()
+                request = value_receiver.next() #pylint: disable-msg=E1101
 
                 while isinstance(request, Request):
                     value = yield request
+                    #pylint: disable-msg=E1101
                     request = value_receiver.send(value)
 
                 if not isinstance(request, Result):
