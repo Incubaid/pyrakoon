@@ -90,16 +90,13 @@ def _validate_signature_helper(fun, *args):
 
     @functools.wraps(fun)
     def wrapped(*args_, **kwargs):
-        new_args = list(args_[1:])
-        missing_args = fun.func_code.co_varnames[len(args_):]
+        new_args = [None] * (len(args) + 1)
+        missing_args = fun.func_code.co_varnames
 
         for missing_arg in missing_args:
-            if len(new_args) == len(args):
-                break
-
             if missing_arg in kwargs:
                 pos = fun.func_code.co_varnames.index(missing_arg)
-                new_args.insert(pos, kwargs[missing_arg])
+                new_args[pos] = kwargs[missing_arg]
                 del kwargs[missing_arg]
 
         if kwargs:
@@ -109,7 +106,7 @@ def _validate_signature_helper(fun, *args):
         i = 0
         error_key_values = []
 
-        for arg, arg_type in zip(new_args, args):
+        for arg, arg_type in zip(new_args[1:], args):
             if not validate(arg, arg_type):
                 error_key_values.append(
                     (fun.func_code.co_varnames[i + 1], new_args[i]))
@@ -118,7 +115,7 @@ def _validate_signature_helper(fun, *args):
         if error_key_values:
             raise ArakoonInvalidArguments(fun.func_name, error_key_values)
 
-        return fun(args_[0], *new_args)
+        return fun(*new_args)
 
     return wrapped
 
@@ -185,8 +182,9 @@ class ArakoonClient(object):
     def _initialize(self, config):
         raise NotImplementedError
 
+    @utils.update_argspec('self', 'clientId', ('clusterId', 'arakoon'))
     @_convert_exceptions
-    @_validate_signature('string')
+    @_validate_signature('string', 'string')
     def hello(self, clientId, clusterId='arakoon'):
         """
         Send a string of your choosing to the server.
@@ -203,6 +201,7 @@ class ArakoonClient(object):
 
         return self._client.hello(clientId, clusterId)
 
+    @utils.update_argspec('self', 'key')
     @_convert_exceptions
     @_validate_signature('string')
     def exists(self, key):
@@ -214,6 +213,7 @@ class ArakoonClient(object):
 
         return self._client.exists(key)
 
+    @utils.update_argspec('self', 'key')
     @_convert_exceptions
     @_validate_signature('string')
     def get(self, key):
@@ -231,6 +231,7 @@ class ArakoonClient(object):
 
         return self._client.get(key)
 
+    @utils.update_argspec('self', 'key', 'value')
     @_convert_exceptions
     @_validate_signature('string', 'string')
     def set(self, key, value):
@@ -251,6 +252,7 @@ class ArakoonClient(object):
 
         return self._client.set(key, value)
 
+    @utils.update_argspec('self', 'seq', ('sync', False))
     @_convert_exceptions
     @_validate_signature('sequence', 'bool')
     def sequence(self, seq, sync=False):
@@ -290,6 +292,7 @@ class ArakoonClient(object):
         #pylint: disable-msg=E1123
         return self._client.sequence((convert_sequence(seq), ), sync=sync)
 
+    @utils.update_argspec('self', 'key')
     @_convert_exceptions
     @_validate_signature('string')
     def delete(self, key):
@@ -309,6 +312,8 @@ class ArakoonClient(object):
     __delitem__ = delete
     __contains__ = exists
 
+    @utils.update_argspec('self', 'beginKey', 'beginKeyIncluded', 'endKey',
+        'endKeyIncluded', ('maxElements', -1))
     @_convert_exceptions
     @_validate_signature('string_option', 'bool', 'string_option', 'bool',
         'int')
@@ -341,6 +346,8 @@ class ArakoonClient(object):
 
         return _reversed_list(result)
 
+    @utils.update_argspec('self', 'first', 'finc', 'last', 'linc',
+        ('maxElements', -1))
     @_convert_exceptions
     @_validate_signature('string_option', 'bool', 'string_option', 'bool',
         'int')
@@ -372,6 +379,7 @@ class ArakoonClient(object):
 
         return _reversed_list((key, value) for key, value in result)
 
+    @utils.update_argspec('self', 'keyPrefix', ('maxElements', -1))
     @_convert_exceptions
     @_validate_signature('string', 'int')
     def prefix(self, keyPrefix, maxElements=-1):
@@ -394,11 +402,13 @@ class ArakoonClient(object):
 
         return _reversed_list(result)
 
+    @utils.update_argspec('self')
     @_convert_exceptions
     def whoMaster(self):
         self._client.determine_master()
         return self._client.master_id
 
+    @utils.update_argspec('self', 'key', 'oldValue', 'newValue')
     @_convert_exceptions
     @_validate_signature('string', 'string_option', 'string_option')
     def testAndSet(self, key, oldValue, newValue):
@@ -422,6 +432,7 @@ class ArakoonClient(object):
 
         return self._client.test_and_set(key, oldValue, newValue)
 
+    @utils.update_argspec('self', 'keys')
     @_convert_exceptions
     @_validate_signature('string_list')
     def multiGet(self, keys):
@@ -435,6 +446,7 @@ class ArakoonClient(object):
 
         return _reversed_list(self._client.multi_get(keys))
 
+    @utils.update_argspec('self')
     @_convert_exceptions
     def expectProgressPossible(self):
         """
@@ -446,6 +458,7 @@ class ArakoonClient(object):
         except ArakoonNoMaster:
             return False
 
+    @utils.update_argspec('self')
     @_convert_exceptions
     def getKeyCount(self):
         """
@@ -456,6 +469,7 @@ class ArakoonClient(object):
 
         return self._client.get_key_count()
 
+    @utils.update_argspec('self', 'name', 'argument')
     @_convert_exceptions
     def userFunction(self, name, argument):
         '''Call a user-defined function on the server
@@ -470,6 +484,7 @@ class ArakoonClient(object):
 
         return self._client.user_function(name, argument)
 
+    @utils.update_argspec('self', 'key', 'value')
     @_convert_exceptions
     def confirm(self, key, value):
         """
@@ -480,6 +495,7 @@ class ArakoonClient(object):
 
         self._client.confirm(key, value)
 
+    @utils.update_argspec('self', 'key', 'vo')
     @_convert_exceptions
     def aSSert(self, key, vo):
         """
@@ -493,6 +509,8 @@ class ArakoonClient(object):
 
         self._client.assert_(key, vo)
 
+    @utils.update_argspec('self', 'beginKey', 'beginKeyIncluded', 'endKey',
+        'endKeyIncluded', ('maxElements', -1))
     @_convert_exceptions
     def rev_range_entries(self,
                           beginKey, beginKeyIncluded,
@@ -516,6 +534,7 @@ class ArakoonClient(object):
 
         return _reversed_list((key, value) for key, value in result)
 
+    @utils.update_argspec('self')
     @_convert_exceptions
     def statistics(self):
         """
@@ -671,10 +690,12 @@ class Sequence(Update):
     def addUpdate(self, u):
         self._updates.append(u)
 
+    @utils.update_argspec('self', 'key', 'value')
     @_validate_signature('string', 'string')
     def addSet(self, key, value):
         self._updates.append(Set(key, value))
 
+    @utils.update_argspec('self', 'key')
     @_validate_signature('string')
     def addDelete(self, key):
         self._updates.append(Delete(key))
