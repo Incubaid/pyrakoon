@@ -140,7 +140,6 @@ class TestTypeCheck(unittest.TestCase):
         self._run_test(protocol.STEP,
             (sequence.Set('key', 'value'), True),
             (sequence.Delete('key'), True),
-            (sequence.TestAndSet('key', 'oldvalue', 'newvalue'), True),
 
             (sequence.Sequence(), True),
             (sequence.Sequence(sequence.Set('key', 'value')), True),

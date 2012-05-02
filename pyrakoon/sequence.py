@@ -85,25 +85,6 @@ class Delete(Step):
 
     key = property(operator.attrgetter('_key'))
 
-class TestAndSet(Step):
-    '''"TestAndSet" operation'''
-
-    TAG = 3
-    ARGS = ('key', protocol.STRING), \
-        ('test_value', protocol.Option(protocol.STRING)), \
-        ('set_value', protocol.Option(protocol.STRING)),
-
-    def __init__(self, key, test_value, set_value):
-        super(TestAndSet, self).__init__(key, test_value, set_value)
-
-        self._key = key
-        self._test_value = test_value
-        self._set_value = set_value
-
-    key = property(operator.attrgetter('_key'))
-    test_value = property(operator.attrgetter('_test_value'))
-    set_value = property(operator.attrgetter('_set_value'))
-
 class Assert(Step):
     '''"Assert" operation'''
 

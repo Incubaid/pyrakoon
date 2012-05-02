@@ -59,41 +59,6 @@ class TestSequenceSerialization(unittest.TestCase):
 
         self.assertEquals(expected, received)
 
-    def test_simple_test_and_set_step_serialization(self):
-        '''Test serialization of 'test_and_set' steps'''
-
-        expected = ''.join(chr(i) for i in itertools.chain(
-            (3, 0, 0, 0),
-            (3, 0, 0, 0),
-            bytes_('key'),
-            (1,),
-            (8, 0, 0, 0),
-            bytes_('oldvalue'),
-            (1,),
-            (8, 0, 0, 0),
-            bytes_('newvalue'),
-        ))
-
-        received = ''.join(sequence.TestAndSet(
-            'key', 'oldvalue', 'newvalue').serialize())
-
-        self.assertEquals(expected, received)
-
-    def test_unset_test_and_set_step_serialization(self):
-        '''Test serialization of 'test_and_step' with empty values'''
-
-        expected = ''.join(chr(i) for i in itertools.chain(
-            (3, 0, 0, 0),
-            (3, 0, 0, 0),
-            bytes_('key'),
-            (0,),
-            (0,),
-        ))
-
-        received = ''.join(sequence.TestAndSet('key', None, None).serialize())
-
-        self.assertEquals(expected, received)
-
     def test_empty_sequence_serialization(self):
         '''Test serialization of an empty sequence'''
 
@@ -129,7 +94,7 @@ class TestSequenceSerialization(unittest.TestCase):
 
         expected = ''.join(chr(i) for i in itertools.chain(
             (5, 0, 0, 0),
-            (3, 0, 0, 0),
+            (2, 0, 0, 0),
             (1, 0, 0, 0),
             (3, 0, 0, 0),
             bytes_('key'),
@@ -138,19 +103,11 @@ class TestSequenceSerialization(unittest.TestCase):
             (2, 0, 0, 0),
             (3, 0, 0, 0),
             bytes_('key'),
-            (3, 0, 0, 0),
-            (3, 0, 0, 0),
-            bytes_('key'),
-            (0,),
-            (1,),
-            (5, 0, 0, 0),
-            bytes_('value'),
         ))
 
         received = ''.join(sequence.Sequence(
             sequence.Set('key', 'value'),
             sequence.Delete('key'),
-            sequence.TestAndSet('key', None, 'value')
         ).serialize())
 
         self.assertEquals(expected, received)
