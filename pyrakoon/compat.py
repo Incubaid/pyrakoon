@@ -29,7 +29,7 @@ import logging
 import functools
 import threading
 
-from pyrakoon import client, errors, protocol, sequence
+from pyrakoon import client, errors, protocol, sequence, utils
 
 __docformat__ = 'epytext'
 
@@ -801,7 +801,7 @@ class _ArakoonClient(client.Client):
                 try:
                     # Send on wire
                     connection = self._send_to_master(bytes_)
-                    return client.read_blocking(message.receive(),
+                    return utils.read_blocking(message.receive(),
                         connection.read)
                 except (errors.NotMaster, ArakoonNoMaster):
                     self.master_id = None
@@ -908,7 +908,7 @@ class _ArakoonClient(client.Client):
         connection = self._send_message(node_id, data)
 
         receiver = command.receive()
-        return client.read_blocking(receiver, connection.read)
+        return utils.read_blocking(receiver, connection.read)
 
     def _validate_master_id(self, master_id):
         if not master_id:

@@ -34,7 +34,7 @@ try:
 except ImportError:
     HAS_NOSE = False
 
-from pyrakoon import client, errors, protocol, test
+from pyrakoon import client, errors, protocol, test, utils
 
 class TestValidateTypes(unittest.TestCase):
     '''Tests for `pyrakoon.client.validate_types`'''
@@ -104,7 +104,7 @@ def test_read_blocking():
     data = StringIO.StringIO(''.join(chr(c) for c in (
         0, 0, 0, 0, 3, 0, 0, 0, ord('x'), ord('x'), ord('x'))))
 
-    result = client.read_blocking(protocol.Hello('testsuite',
+    result = utils.read_blocking(protocol.Hello('testsuite',
         'pyrakoon_test').receive(), data.read)
 
     if HAS_NOSE:

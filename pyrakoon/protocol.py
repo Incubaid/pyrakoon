@@ -524,7 +524,7 @@ class Message(object):
 
         :raise ArakoonError: Server returned an error code
 
-        :see: `pyrakoon.client.process_blocking`
+        :see: `pyrakoon.utils.process_blocking`
         '''
 
         from pyrakoon import errors

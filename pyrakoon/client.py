@@ -199,75 +199,12 @@ class Client(object):
 
         :see: `pyrakoon.protocol.Message.serialize`
         :see: `pyrakoon.protocol.Message.receive`
-        :see: `process_blocking`
+        :see: `pyrakoon.utils.process_blocking`
         '''
 
         raise NotImplementedError
 
 #pylint: enable-msg=C0111
-
-
-def process_blocking(message, stream):
-    '''Process a message using a blocking stream API
-
-    The given `message` will be serialized and written to the stream. Once the
-    message was written, the result will be read using `read_blocking`.
-
-    The given stream object should implement `write` and `read` methods,
-    somewhat like the file interface.
-
-    :param message: Message to process
-    :type message: `pyrakoon.protocol.Message`
-    :param stream: Stream to work on
-    :type stream: `object`
-
-    :return: Result of the command execution
-    :rtype: `object`
-
-    :see: `Client._process`
-    :see: `pyrakoon.protocol.Message.serialize`
-    :see: `pyrakoon.prococol.Message.receive`
-    '''
-
-    for bytes_ in message.serialize():
-        stream.write(bytes_)
-
-    return read_blocking(message.receive(), stream.read)
-
-
-def read_blocking(receiver, read_fun):
-    '''Process message result parsing using a blocking stream read function
-
-    Given a function to read a given amount of bytes from a result channel,
-    this function handles the interaction with the parsing coroutine of a
-    message (as passed to `Client._process`).
-
-    :param receiver: Message result parser coroutine
-    :type receiver: *generator*
-    :param read_fun: Callable to read a given number of bytes from a result
-        stream
-    :type read_fun: `callable`
-
-    :return: Message result
-    :rtype: `object`
-
-    :raise TypeError: Coroutine didn't return a `Result`
-
-    :see: `pyrakoon.protocol.Message.receive`
-    '''
-
-    request = receiver.next()
-
-    while isinstance(request, protocol.Request):
-        value = read_fun(request.count)
-        request = receiver.send(value)
-
-    if not isinstance(request, protocol.Result):
-        raise TypeError
-
-    utils.kill_coroutine(receiver, LOGGER.exception)
-
-    return request.value
 
 
 class SocketClient(Client):
@@ -302,7 +239,7 @@ class SocketClient(Client):
             for part in message.serialize():
                 self._socket.sendall(part)
 
-            return read_blocking(message.receive(), self._socket.recv)
+            return utils.read_blocking(message.receive(), self._socket.recv)
         except Exception:
             try:
                 self._socket.close()

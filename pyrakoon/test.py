@@ -27,7 +27,7 @@ try:
 except ImportError:
     import StringIO
 
-from pyrakoon import client, errors, protocol
+from pyrakoon import client, errors, protocol, utils
 
 class FakeClient(client.Client):
     '''Fake, in-memory Arakoon client'''
@@ -48,7 +48,7 @@ class FakeClient(client.Client):
         bytes_ = StringIO.StringIO(''.join(message.serialize())).read
 
         # Helper
-        recv = lambda type_: client.read_blocking(type_.receive(), bytes_)
+        recv = lambda type_: utils.read_blocking(type_.receive(), bytes_)
 
         command = recv(protocol.UINT32)
 
@@ -221,4 +221,4 @@ class FakeClient(client.Client):
             result.write(struct.pack('<I', 0))
             result.seek(0)
 
-        return client.read_blocking(message.receive(), result.read)
+        return utils.read_blocking(message.receive(), result.read)
