@@ -25,6 +25,11 @@ import struct
 import operator
 import itertools
 
+try:
+    import cStringIO as StringIO
+except ImportError:
+    import StringIO
+
 from pyrakoon import utils
 
 # Result codes
@@ -215,6 +220,19 @@ class SignedInteger(Type):
 
 INT32 = SignedInteger(32, '<i')
 INT64 = SignedInteger(64, '<q')
+
+
+class Float(Type):
+    '''Float type'''
+
+    PACKER = struct.Struct('d')
+
+    def check(self, value):
+        if not isinstance(value, float):
+            raise TypeError
+
+FLOAT = Float()
+
 
 class Bool(Type):
     '''Bool type'''
@@ -461,6 +479,102 @@ class Product(Type):
             values.append(value)
 
         yield Result(tuple(values))
+
+
+class Statistics(Type):
+    '''Statistics type'''
+
+    def check(self, value):
+        raise NotImplementedError('Statistics can\'t be checked')
+
+    def serialize(self, value):
+        raise NotImplementedError('Statistics can\'t be serialized')
+
+    def receive(self):
+        buffer_receiver = STRING.receive()
+        request = buffer_receiver.next()
+
+        while isinstance(request, Request):
+            value = yield request
+            request = buffer_receiver.send(value)
+
+        if not isinstance(request, Result):
+            raise TypeError
+
+        read = StringIO.StringIO(request.value).read
+
+        class NamedField(object):
+            FIELD_TYPE_INT = 1
+            FIELD_TYPE_INT64 = 2
+            FIELD_TYPE_FLOAT = 3
+            FIELD_TYPE_STRING = 4
+            FIELD_TYPE_LIST = 5
+
+            @classmethod
+            def receive(cls):
+                type_receiver = INT32.receive()
+                request = type_receiver.next()
+
+                while isinstance(request, Request):
+                    value = yield request
+                    request = type_receiver.send(value)
+
+                if not isinstance(request, Result):
+                    raise TypeError
+
+                type_ = request.value
+
+                name_receiver = STRING.receive()
+                request = name_receiver.next()
+
+                while isinstance(request, Request):
+                    value = yield request
+                    request = name_receiver.send(value)
+
+                if not isinstance(request, Result):
+                    raise TypeError
+
+                name = request.value
+
+                if type_ == cls.FIELD_TYPE_INT:
+                    value_receiver = INT32.receive()
+                elif type_ == cls.FIELD_TYPE_INT64:
+                    value_receiver = INT64.receive()
+                elif type_ == cls.FIELD_TYPE_FLOAT:
+                    value_receiver = FLOAT.receive()
+                elif type_ == cls.FIELD_TYPE_STRING:
+                    value_receiver = STRING.receive()
+                elif type_ == cls.FIELD_TYPE_LIST:
+                    value_receiver = List(NamedField).receive()
+                else:
+                    raise ValueError('Unknown named field type %d' % type_)
+
+                request = value_receiver.next()
+
+                while isinstance(request, Request):
+                    value = yield request
+                    request = value_receiver.send(value)
+
+                if not isinstance(request, Result):
+                    raise TypeError
+
+                value = request.value
+
+                if type_ == cls.FIELD_TYPE_LIST:
+                    result = dict()
+                    map(result.update, value)
+                    value = result
+
+                yield Result({name: value})
+
+        result = utils.read_blocking(NamedField.receive(), read)
+
+        if 'arakoon_stats' not in result:
+            raise ValueError('Missing expected \'arakoon_stats\' value')
+
+        yield Result(result['arakoon_stats'])
+
+STATISTICS = Statistics()
 
 
 # Protocol message definitions
@@ -1200,6 +1314,25 @@ class RevRangeEntries(Message):
     end_key = property(operator.attrgetter('_end_key'))
     end_inclusive = property(operator.attrgetter('_end_inclusive'))
     max_elements = property(operator.attrgetter('_max_elements'))
+
+
+class Statistics(Message):
+    '''"statistics" message'''
+
+    __slots__ = ()
+
+    TAG = 0x0013 | Message.MASK
+    ARGS = ()
+    RETURN_TYPE = STATISTICS
+
+    DOC = utils.format_doc('''
+        Send a "statistics" command to the server
+
+        This method returns some server statistics.
+
+        :return: Server statistics
+        :rtype: `Statistics`
+    ''')
 
 
 def build_prologue(cluster):

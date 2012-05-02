@@ -292,3 +292,10 @@ class TestCompatClient(unittest.TestCase):
             [('key_90', 'value_90'), ('key_9', 'value_9'),
              ('key_89', 'value_89'), ('key_88', 'value_88'),
              ('key_87', 'value_87')])
+
+    def test_statistics(self):
+        client = self._create_client()
+
+        statistics = client.statistics()
+
+        self.assert_('start' in statistics)

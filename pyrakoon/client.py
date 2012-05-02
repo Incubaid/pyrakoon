@@ -176,6 +176,10 @@ class Client(object):
     def rev_range_entries(self): #pylint: disable-msg=R0201
         assert False
 
+    @call(protocol.Statistics)
+    def statistics(self): #pylint: disable-msg=R0201
+        assert False
+
     __getitem__ = get
     __setitem__ = set
     __delitem__ = delete

@@ -510,6 +510,14 @@ class ArakoonClient(object):
 
         return _reversed_list((key, value) for key, value in result)
 
+    @_convert_exceptions
+    def statistics(self):
+        """
+        @return a dictionary with some statistics about the master
+        """
+
+        return self._client.statistics()
+
 
     def _dropConnections(self):
         return self._client.drop_connections()
