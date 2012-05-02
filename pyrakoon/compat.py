@@ -89,7 +89,7 @@ def _validate_signature_helper(fun, *args):
             raise RuntimeError('Invalid argument type supplied: %s' % arg_type)
 
     @functools.wraps(fun)
-    def wrapped(*args_, **kwargs):
+    def wrapped(**kwargs):
         new_args = [None] * (len(args) + 1)
         missing_args = fun.func_code.co_varnames
 
@@ -351,7 +351,8 @@ class ArakoonClient(object):
     @_convert_exceptions
     @_validate_signature('string_option', 'bool', 'string_option', 'bool',
         'int')
-    def range_entries(self, beginKey, beginKeyIncluded, endKey, endKeyIncluded, maxElements=-1):
+    def range_entries(self, beginKey, beginKeyIncluded, endKey, endKeyIncluded,
+        maxElements=-1):
         """
         Perform a range query on the store, retrieving the set of matching key-value pairs
 
