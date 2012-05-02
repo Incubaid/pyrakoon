@@ -282,6 +282,7 @@ class ArakoonClient(object):
 
             return sequence.Sequence(*steps)
 
+        #pylint: disable-msg=E1123
         return self._client.sequence((convert_sequence(seq), ), sync=sync)
 
     @_convert_exceptions

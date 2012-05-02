@@ -98,7 +98,7 @@ def call(message_type):
     return wrapper
 
 
-#pylint: disable-msg=C0111
+#pylint: disable-msg=C0111,R0904
 class Client(object):
     '''Abstract base class for implementations of Arakoon clients'''
 

@@ -481,8 +481,10 @@ class Product(Type):
         yield Result(tuple(values))
 
 
-class Statistics(Type):
+class StatisticsType(Type):
     '''Statistics type'''
+
+    #pylint: disable-msg=R0912
 
     def check(self, value):
         raise NotImplementedError('Statistics can\'t be checked')
@@ -503,12 +505,20 @@ class Statistics(Type):
 
         read = StringIO.StringIO(request.value).read
 
-        class NamedField(object):
+        class NamedField(Type):
+            '''NamedField type'''
+
             FIELD_TYPE_INT = 1
             FIELD_TYPE_INT64 = 2
             FIELD_TYPE_FLOAT = 3
             FIELD_TYPE_STRING = 4
             FIELD_TYPE_LIST = 5
+
+            def check(self, value):
+                raise NotImplementedError('NamedFields can\'t be checked')
+
+            def serialize(self, value):
+                raise NotImplementedError('NamedFields can\'t be serialized')
 
             @classmethod
             def receive(cls):
@@ -562,7 +572,7 @@ class Statistics(Type):
 
                 if type_ == cls.FIELD_TYPE_LIST:
                     result = dict()
-                    map(result.update, value)
+                    map(result.update, value) #pylint: disable-msg=W0141
                     value = result
 
                 yield Result({name: value})
@@ -574,7 +584,7 @@ class Statistics(Type):
 
         yield Result(result['arakoon_stats'])
 
-STATISTICS = Statistics()
+STATISTICS = StatisticsType()
 
 
 # Protocol message definitions
