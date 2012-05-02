@@ -823,16 +823,15 @@ class TestAndSet(Message):
 
 
 class Sequence(Message):
-    '''"sequence" message'''
+    '''"sequence" and "synced_sequence" message'''
 
-    __slots__ = '_steps',
+    __slots__ = '_steps', '_sync',
 
-    TAG = 0x0010 | Message.MASK
-    ARGS = ('steps', List(STEP)),
+    ARGS = ('steps', List(STEP)), ('sync', BOOL, False),
     RETURN_TYPE = UNIT
 
     DOC = utils.format_doc('''
-        Send a "sequence" command to the server
+        Send a "sequence" or "synced_sequence" command to the server
 
         The operations passed to the constructor should be instances of
         implementations of the `pyrakoon.sequence.Step` class. These operations
@@ -840,9 +839,11 @@ class Sequence(Message):
 
         :param steps: Steps to execute
         :type steps: iterable of `pyrakoon.sequence.Step`
+        :param sync: Use `synced_sequence`
+        :type sync: `bool`
     ''')
 
-    def __init__(self, steps):
+    def __init__(self, steps, sync):
         from pyrakoon import sequence
 
         super(Sequence, self).__init__()
@@ -853,10 +854,15 @@ class Sequence(Message):
         else:
             self._sequence = sequence.Sequence(*steps)
 
+        self._sync = sync
+
     sequence = property(operator.attrgetter('_sequence'))
+    sync = property(operator.attrgetter('_sync'))
 
     def serialize(self):
-        for bytes_ in UINT32.serialize(self.TAG):
+        tag = (0x0010 if not self.sync else 0x0024) | Message.MASK
+
+        for bytes_ in UINT32.serialize(tag):
             yield bytes_
 
         sequence_bytes = ''.join(self.sequence.serialize())

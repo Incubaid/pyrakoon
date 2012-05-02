@@ -218,6 +218,8 @@ class TestCompatClient(unittest.TestCase):
         sequence.addUpdate(sequence2)
 
         client.sequence(sequence)
+        client.sequence(sequence, sync=False)
+        client.sequence(sequence, sync=True)
 
         self.assertEquals(client.get('skey'), 'value2')
 

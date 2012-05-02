@@ -252,8 +252,8 @@ class ArakoonClient(object):
         return self._client.set(key, value)
 
     @_convert_exceptions
-    @_validate_signature('sequence')
-    def sequence(self, seq):
+    @_validate_signature('sequence', 'bool')
+    def sequence(self, seq, sync=False):
         """
         Try to execute a sequence of updates.
 
@@ -282,7 +282,7 @@ class ArakoonClient(object):
 
             return sequence.Sequence(*steps)
 
-        return self._client.sequence((convert_sequence(seq), ))
+        return self._client.sequence((convert_sequence(seq), ), sync=sync)
 
     @_convert_exceptions
     @_validate_signature('string')
