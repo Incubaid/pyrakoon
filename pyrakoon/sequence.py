@@ -104,6 +104,23 @@ class TestAndSet(Step):
     test_value = property(operator.attrgetter('_test_value'))
     set_value = property(operator.attrgetter('_set_value'))
 
+class Assert(Step):
+    '''"Assert" operation'''
+
+    TAG = 8
+    ARGS = ('key', protocol.STRING), \
+        ('value', protocol.Option(protocol.STRING)),
+
+    def __init__(self, key, value):
+        super(Assert, self).__init__(key, value)
+
+        self._key = key
+        self._value = value
+
+    key = property(operator.attrgetter('_key'))
+    value = property(operator.attrgetter('_value'))
+
+
 class Sequence(Step):
     '''"Sequence" operation
 

@@ -267,6 +267,9 @@ class ArakoonClient(object):
         def convert_delete(step):
             return sequence.Delete(step._key)
 
+        def convert_assert(step):
+            return sequence.Assert(step._key, step._value)
+
         def convert_sequence(sequence_):
             steps = []
 
@@ -275,6 +278,8 @@ class ArakoonClient(object):
                     steps.append(convert_set(step))
                 elif isinstance(step, Delete):
                     steps.append(convert_delete(step))
+                elif isinstance(step, Assert):
+                    steps.append(convert_assert(step))
                 elif isinstance(step, Sequence):
                     steps.append(convert_sequence(step))
                 else:
@@ -654,6 +659,11 @@ class Delete(Update):
     def __init__(self, key):
         self._key = key
 
+class Assert(Update):
+    def __init__(self, key, value):
+        self._key = key
+        self._value = value
+
 class Sequence(Update):
     def __init__(self):
         self._updates = []
@@ -668,6 +678,9 @@ class Sequence(Update):
     @_validate_signature('string')
     def addDelete(self, key):
         self._updates.append(Delete(key))
+
+    def addAssert(self, key, value):
+        self._updates.append(Assert(key, value))
 
 
 # ArakoonClientConfig

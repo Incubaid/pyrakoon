@@ -215,6 +215,8 @@ class TestCompatClient(unittest.TestCase):
         sequence2 = compat.Sequence()
         sequence2.addDelete('skey')
         sequence2.addSet('skey', 'value2')
+        sequence2.addAssert('skey', 'value2')
+        sequence2.addAssert('skey2', None)
         sequence.addUpdate(sequence2)
 
         client.sequence(sequence)
