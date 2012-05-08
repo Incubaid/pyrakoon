@@ -212,6 +212,7 @@ class NurseryClient(object):
 
         LOGGER.debug('Requesting nursery configuration')
         config = self._process(GetNurseryConfig())
+        LOGGER.debug('Received %r', config)
 
         LOGGER.debug('Disconnecting clients')
         for client in self._clients.itervalues():
