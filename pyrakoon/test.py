@@ -237,7 +237,21 @@ DEFAULT_CLIENT_PORT = 4932
 DEFAULT_MESSAGING_PORT = 4933
 
 class ArakoonEnvironmentMixin:
+    '''Test mixin to manage an Arakoon process'''
+
+    #pylint: disable-msg=C0103,W0232,W0201
     def setUpArakoon(self, name, config_template):
+        '''Launch an Arakoon daemon process
+
+        :param name: Cluster name
+        :type name: `str`
+        :param config_template: Configuration file template
+        :type config_template: `str`
+
+        :return: Client configuration tuple, config path and base path
+        :rtype: `((str, dict<str, (str, int)>), str, str)`
+        '''
+
         base = tempfile.mkdtemp(prefix=name)
         self._arakoon_environment_base = base
         LOGGER.info('Running in %s', base)
@@ -265,21 +279,25 @@ class ArakoonEnvironmentMixin:
 
         # Start server
         command = ['arakoon', '-config', config_path, '--node', 'arakoon_0']
-        self.process = subprocess.Popen(command, close_fds=True, cwd=base)
+        self._arakoon_process = subprocess.Popen(
+            command, close_fds=True, cwd=base)
 
-        LOGGER.info('Arakoon running, PID %d', self.process.pid)
+        LOGGER.info('Arakoon running, PID %d', self._arakoon_process.pid)
 
         return (name, {
             'arakoon_0': ('127.0.0.1', DEFAULT_CLIENT_PORT),
         }), config_path, base
 
     def tearDownArakoon(self):
-        try:
-            if self.process:
+        '''Teardown a managed Arakoon process'''
 
-                LOGGER.info('Killing Arakoon process %d', self.process.pid)
+        try:
+            if self._arakoon_process:
+
+                LOGGER.info(
+                    'Killing Arakoon process %d', self._arakoon_process.pid)
                 try:
-                    self.process.terminate()
+                    self._arakoon_process.terminate()
                 except OSError:
                     LOGGER.exception('Failure while killing Arakoon')
 
