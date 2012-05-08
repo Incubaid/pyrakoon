@@ -21,13 +21,22 @@
 
 '''Testing utilities'''
 
+import os.path
+import shutil
 import struct
+import logging
+import tempfile
+import subprocess
+
 try:
     import cStringIO as StringIO
 except ImportError:
     import StringIO
 
 from pyrakoon import client, errors, protocol, utils
+
+
+LOGGER = logging.getLogger(__name__)
 
 class FakeClient(client.Client):
     '''Fake, in-memory Arakoon client'''
@@ -222,3 +231,60 @@ class FakeClient(client.Client):
             result.seek(0)
 
         return utils.read_blocking(message.receive(), result.read)
+
+
+DEFAULT_CLIENT_PORT = 4932
+DEFAULT_MESSAGING_PORT = 4933
+
+class ArakoonEnvironmentMixin:
+    def setUpArakoon(self, name, config_template):
+        base = tempfile.mkdtemp(prefix=name)
+        self._arakoon_environment_base = base
+        LOGGER.info('Running in %s', base)
+
+        home_dir = os.path.join(base, 'home')
+        os.mkdir(home_dir)
+
+        log_dir = os.path.join(base, 'log')
+        os.mkdir(log_dir)
+
+        config_path = os.path.join(base, 'config.ini')
+        config = config_template % {
+            'CLIENT_PORT': DEFAULT_CLIENT_PORT,
+            'MESSAGING_PORT': DEFAULT_MESSAGING_PORT,
+            'HOME': home_dir,
+            'LOG_DIR': log_dir,
+            'CLUSTER_ID': name,
+        }
+
+        fd = open(config_path, 'w')
+        try:
+            fd.write(config)
+        finally:
+            fd.close()
+
+        # Start server
+        command = ['arakoon', '-config', config_path, '--node', 'arakoon_0']
+        self.process = subprocess.Popen(command, close_fds=True, cwd=base)
+
+        LOGGER.info('Arakoon running, PID %d', self.process.pid)
+
+        return (name, {
+            'arakoon_0': ('127.0.0.1', DEFAULT_CLIENT_PORT),
+        }), config_path, base
+
+    def tearDownArakoon(self):
+        try:
+            if self.process:
+
+                LOGGER.info('Killing Arakoon process %d', self.process.pid)
+                try:
+                    self.process.terminate()
+                except OSError:
+                    LOGGER.exception('Failure while killing Arakoon')
+
+        finally:
+            base = self._arakoon_environment_base
+            if os.path.isdir(base):
+                LOGGER.info('Removing tree %s', base)
+                shutil.rmtree(base)

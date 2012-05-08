@@ -21,27 +21,20 @@
 
 '''Tests for code in `pyrakoon.compat`'''
 
-import os.path
 import time
-import shutil
 import logging
-import tempfile
 import unittest
-import subprocess
 
 import nose
 
-from pyrakoon import compat
+from pyrakoon import compat, test
 
 LOGGER = logging.getLogger(__name__)
-
-DEFAULT_CLIENT_PORT = 4932
-DEFAULT_MESSAGING_PORT = 4933
 
 CONFIG_TEMPLATE = '''
 [global]
 cluster = arakoon_0
-cluster_id = pyrakoon_test
+cluster_id = %(CLUSTER_ID)s
 
 [arakoon_0]
 ip = 127.0.0.1
@@ -63,42 +56,14 @@ class TestArgumentChecks(unittest.TestCase):
         self.assertRaises(compat.ArakoonInvalidArguments, client.hello, 123)
 
 
-class TestCompatClient(unittest.TestCase):
+class TestCompatClient(unittest.TestCase, test.ArakoonEnvironmentMixin):
     '''Test the compatibility client against a real Arakoon server'''
 
     def setUp(self):
-        self.base = tempfile.mkdtemp(prefix='pyrakoon_test')
-        LOGGER.info('Running in %s', self.base)
+        config, _, _2 = self.setUpArakoon('pyrakoon_test_compat',
+            CONFIG_TEMPLATE)
 
-        home_dir = os.path.join(self.base, 'home')
-        os.mkdir(home_dir)
-
-        log_dir = os.path.join(self.base, 'log')
-        os.mkdir(log_dir)
-
-        config_path = os.path.join(self.base, 'config.ini')
-        config = CONFIG_TEMPLATE % {
-            'CLIENT_PORT': DEFAULT_CLIENT_PORT,
-            'MESSAGING_PORT': DEFAULT_MESSAGING_PORT,
-            'HOME': home_dir,
-            'LOG_DIR': log_dir,
-        }
-
-        fd = open(config_path, 'w')
-        try:
-            fd.write(config)
-        finally:
-            fd.close()
-
-        # Start server
-        command = ['arakoon', '-config', config_path, '--node', 'arakoon_0']
-        self.process = subprocess.Popen(command, close_fds=True, cwd=self.base)
-
-        LOGGER.info('Arakoon running, PID %d', self.process.pid)
-
-        self.client_config = compat.ArakoonClientConfig('pyrakoon_test', {
-            'arakoon_0': ('127.0.0.1', DEFAULT_CLIENT_PORT),
-        })
+        self.client_config = compat.ArakoonClientConfig(*config)
 
         # Give server some time to get up
         ok = False
@@ -106,7 +71,7 @@ class TestCompatClient(unittest.TestCase):
             LOGGER.info('Attempting hello call')
             try:
                 client = self._create_client()
-                client.hello('testsuite', 'pyrakoon_test')
+                client.hello('testsuite', config[0])
                 client._client.drop_connections()
             except:
                 LOGGER.info('Call failed, sleeping')
@@ -120,31 +85,19 @@ class TestCompatClient(unittest.TestCase):
             raise RuntimeError('Unable to start Arakoon server')
 
     def tearDown(self):
-        try:
-            if self.process:
-                pid = self.process.pid
-
-                LOGGER.info('Killing Arakoon process %d', self.process.pid)
-                try:
-                    self.process.terminate()
-                except OSError:
-                    LOGGER.exception('Failure while killing Arakoon')
-
-        finally:
-            if os.path.isdir(self.base):
-                LOGGER.info('Removing tree %s', self.base)
-                shutil.rmtree(self.base)
+        self.tearDownArakoon()
 
     def _create_client(self):
         client = compat.ArakoonClient(self.client_config)
-        client.hello('testsuite', 'pyrakoon_test')
+        client.hello('testsuite', self.client_config.clusterId)
         return client
 
     def test_hello(self):
         '''Say hello to the Arakoon server'''
 
         self.assertEquals(
-            self._create_client().hello('testsuite', 'pyrakoon_test'),
+            self._create_client().hello(
+                'testsuite', self.client_config.clusterId),
             'Arakoon "1.2"')
 
     def test_who_master(self):
