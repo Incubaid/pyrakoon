@@ -21,10 +21,8 @@
 
 '''Tests for code in `pyrakoon.nursery`'''
 
-import time
 import logging
 import unittest
-import subprocess
 
 from pyrakoon import compat, nursery, test
 
@@ -48,42 +46,16 @@ log_dir = %(LOG_DIR)s
 log_level = debug
 '''
 
-class TestNurseryClient(unittest.TestCase, test.ArakoonEnvironmentMixin):
-    '''Test the compatibility client against a real Arakoon server'''
+class TestNurseryClient(unittest.TestCase, test.NurseryEnvironmentMixin):
+    '''Test the nursery client against a real Arakoon nursery setup'''
 
     def setUp(self):
-        client_config, config_path, base = self.setUpArakoon(
+        client_config, config_path, base = self.setUpNursery(
             'pyrakoon_test_nursery', CONFIG_TEMPLATE)
         self.client_config = compat.ArakoonClientConfig(*client_config)
 
-        # Give server some time to get up
-        ok = False
-        for _ in xrange(5):
-            LOGGER.info('Attempting hello call')
-            try:
-                client = self._create_client()
-                client.hello('testsuite', 'pyrakoon_test')
-                client._client.drop_connections()
-            except:
-                LOGGER.info('Call failed, sleeping')
-                time.sleep(1)
-            else:
-                LOGGER.debug('Call succeeded')
-                ok = True
-                break
-
-        if not ok:
-            raise RuntimeError('Unable to start Arakoon server')
-
-        subprocess.check_call([
-            'arakoon', '-config', config_path, '--nursery-init',
-            client_config[0]
-        ], close_fds=True, cwd=base)
-
-        time.sleep(5)
-
     def tearDown(self):
-        self.tearDownArakoon()
+        self.tearDownNursery()
 
     def _create_client(self):
         client = compat.ArakoonClient(self.client_config)

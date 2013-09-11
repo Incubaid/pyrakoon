@@ -22,6 +22,7 @@
 '''Testing utilities'''
 
 import os.path
+import time
 import shutil
 import struct
 import logging
@@ -33,7 +34,7 @@ try:
 except ImportError:
     import StringIO
 
-from pyrakoon import client, errors, protocol, utils
+from pyrakoon import client, compat, errors, protocol, utils
 
 
 LOGGER = logging.getLogger(__name__)
@@ -282,7 +283,9 @@ class ArakoonEnvironmentMixin:
         self._arakoon_process = subprocess.Popen(
             command, close_fds=True, cwd=base)
 
+        #pylint: disable-msg=E1101
         LOGGER.info('Arakoon running, PID %d', self._arakoon_process.pid)
+        #pylint: enable-msg=E1101
 
         return (name, {
             'arakoon_0': ('127.0.0.1', DEFAULT_CLIENT_PORT),
@@ -294,15 +297,73 @@ class ArakoonEnvironmentMixin:
         try:
             if self._arakoon_process:
 
+                #pylint: disable-msg=E1101
                 LOGGER.info(
                     'Killing Arakoon process %d', self._arakoon_process.pid)
                 try:
                     self._arakoon_process.terminate()
                 except OSError:
                     LOGGER.exception('Failure while killing Arakoon')
+                #pylint: enable-msg=E1101
 
         finally:
             base = self._arakoon_environment_base
             if os.path.isdir(base):
                 LOGGER.info('Removing tree %s', base)
                 shutil.rmtree(base)
+
+
+#pylint: disable-msg=W0232
+class NurseryEnvironmentMixin(ArakoonEnvironmentMixin):
+    '''Test mixin to manage an Arakoon nursery keeper'''
+
+    #pylint: disable-msg=C0103
+    def setUpNursery(self, name, config_template):
+        '''Launch an Arakoon nursery keeper daemon process
+
+        :param name: Cluster name
+        :type name: `str`
+        :param config_template: Configuration file template
+        :type config_template: `str`
+
+        :return: Client configuration tuple, config path and base path
+        :rtype: `((str, dict<str, (str, int)>), str, str)`
+        '''
+
+        client_config, config_path, base = self.setUpArakoon(
+            name, config_template)
+
+        #pylint: disable-msg=W0142
+        compat_client_config = compat.ArakoonClientConfig(*client_config)
+
+        # Give server some time to get up
+        ok = False
+        for _ in xrange(5):
+            LOGGER.info('Attempting hello call')
+            try:
+                client_ = compat.ArakoonClient(compat_client_config)
+                client_.hello('testsuite', compat_client_config.clusterId)
+                client_._dropConnections() #pylint: disable-msg=W0212
+            except: #pylint: disable-msg=W0702
+                LOGGER.exception('Call failed, sleeping')
+            else:
+                LOGGER.debug('Call succeeded')
+                ok = True
+                break
+
+        if not ok:
+            raise RuntimeError('Unable to start Arakoon server')
+
+        subprocess.check_call([
+            'arakoon', '-config', config_path, '--nursery-init',
+            client_config[0]
+        ], close_fds=True, cwd=base)
+
+        time.sleep(5)
+
+        return client_config, config_path, base
+
+    def tearDownNursery(self):
+        '''Teardown a managed Arakoon nursery keeper process'''
+
+        self.tearDownArakoon()
