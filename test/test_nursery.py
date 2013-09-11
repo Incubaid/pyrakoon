@@ -125,6 +125,5 @@ class TestNurseryClientTx(twisted.trial.unittest.TestCase,
         try:
             message = nursery.GetNurseryConfig()
             config = yield proto._process(message)
-            proto.transport.loseConnection()
         finally:
             proto.transport.loseConnection()
