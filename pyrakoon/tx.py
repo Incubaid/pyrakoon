@@ -74,8 +74,12 @@ class ArakoonProtocol(client.Client, stateful.StatefulProtocol,
 
     _INITIAL_REQUEST_SIZE = protocol.UINT32.PACKER.size
 
-    def __init__(self):
-        '''Initialize a new `ArakoonProtocol`'''
+    def __init__(self, cluster_id):
+        '''Initialize a new `ArakoonProtocol`
+
+        :param cluster_id: Name of the cluster
+        :type cluster_id: `str`
+        '''
 
         client.Client.__init__(self)
 
@@ -85,6 +89,12 @@ class ArakoonProtocol(client.Client, stateful.StatefulProtocol,
         self._connected = False
         self._deferredLock = defer.DeferredLock()
         self._threadLock = threading.Lock()
+
+        self._cluster_id = cluster_id
+
+    def connectionMade(self):
+        prologue = protocol.build_prologue(self._cluster_id)
+        self.transport.write(prologue)
 
     def _process(self, message):
         # Not sure we really want/need all this locking stuff...
