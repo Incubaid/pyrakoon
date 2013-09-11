@@ -24,7 +24,10 @@
 import logging
 import unittest
 
-from pyrakoon import compat, nursery, test
+from twisted.internet import defer, error, interfaces, protocol, reactor
+import twisted.trial.unittest
+
+from pyrakoon import compat, nursery, test, tx
 
 LOGGER = logging.getLogger(__name__)
 
@@ -81,3 +84,47 @@ class TestNurseryClient(unittest.TestCase, test.NurseryEnvironmentMixin):
         client.set('key', 'value')
         self.assertEqual(client.get('key'), 'value')
         client.delete('key')
+
+
+class TestNurseryClientTx(twisted.trial.unittest.TestCase,
+    test.NurseryEnvironmentMixin):
+    '''Test Twisted code against an Arakoon nursery setup'''
+
+    CLUSTER_ID = 'pyrakoon_test_nursery_tx'
+
+    def setUp(self):
+        client_config, _, _2 = self.setUpNursery(
+            self.CLUSTER_ID, CONFIG_TEMPLATE)
+        self.client_config = client_config
+
+    def tearDown(self):
+        self.tearDownNursery()
+
+    @defer.inlineCallbacks
+    def _create_client(self):
+        client = protocol.ClientCreator(reactor,
+            tx.ArakoonProtocol, self.CLUSTER_ID)
+
+        cluster_id, nodes = self.client_config
+        ip, port = nodes.values()[0]
+
+        proto = yield client.connectTCP(ip, port)
+
+        try:
+            yield proto.hello('test_nursery_client_tx', cluster_id)
+        except:
+            proto.transport.loseConnection()
+            raise
+
+        defer.returnValue(proto)
+
+    @defer.inlineCallbacks
+    def test_get_nursery_config(self):
+        proto = yield self._create_client()
+
+        try:
+            message = nursery.GetNurseryConfig()
+            config = yield proto._process(message)
+            proto.transport.loseConnection()
+        finally:
+            proto.transport.loseConnection()
