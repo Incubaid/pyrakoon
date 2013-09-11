@@ -21,12 +21,13 @@
 
 '''Tests for code in `pyrakoon.nursery`'''
 
-import time
 import logging
 import unittest
-import subprocess
 
-from pyrakoon import compat, nursery, test
+from twisted.internet import defer, error, interfaces, protocol, reactor
+import twisted.trial.unittest
+
+from pyrakoon import compat, nursery, test, tx
 
 LOGGER = logging.getLogger(__name__)
 
@@ -48,42 +49,16 @@ log_dir = %(LOG_DIR)s
 log_level = debug
 '''
 
-class TestNurseryClient(unittest.TestCase, test.ArakoonEnvironmentMixin):
-    '''Test the compatibility client against a real Arakoon server'''
+class TestNurseryClient(unittest.TestCase, test.NurseryEnvironmentMixin):
+    '''Test the nursery client against a real Arakoon nursery setup'''
 
     def setUp(self):
-        client_config, config_path, base = self.setUpArakoon(
+        client_config, config_path, base = self.setUpNursery(
             'pyrakoon_test_nursery', CONFIG_TEMPLATE)
         self.client_config = compat.ArakoonClientConfig(*client_config)
 
-        # Give server some time to get up
-        ok = False
-        for _ in xrange(5):
-            LOGGER.info('Attempting hello call')
-            try:
-                client = self._create_client()
-                client.hello('testsuite', 'pyrakoon_test')
-                client._client.drop_connections()
-            except:
-                LOGGER.info('Call failed, sleeping')
-                time.sleep(1)
-            else:
-                LOGGER.debug('Call succeeded')
-                ok = True
-                break
-
-        if not ok:
-            raise RuntimeError('Unable to start Arakoon server')
-
-        subprocess.check_call([
-            'arakoon', '-config', config_path, '--nursery-init',
-            client_config[0]
-        ], close_fds=True, cwd=base)
-
-        time.sleep(5)
-
     def tearDown(self):
-        self.tearDownArakoon()
+        self.tearDownNursery()
 
     def _create_client(self):
         client = compat.ArakoonClient(self.client_config)
@@ -109,3 +84,47 @@ class TestNurseryClient(unittest.TestCase, test.ArakoonEnvironmentMixin):
         client.set('key', 'value')
         self.assertEqual(client.get('key'), 'value')
         client.delete('key')
+
+
+class TestNurseryClientTx(twisted.trial.unittest.TestCase,
+    test.NurseryEnvironmentMixin):
+    '''Test Twisted code against an Arakoon nursery setup'''
+
+    CLUSTER_ID = 'pyrakoon_test_nursery_tx'
+
+    def setUp(self):
+        client_config, _, _2 = self.setUpNursery(
+            self.CLUSTER_ID, CONFIG_TEMPLATE)
+        self.client_config = client_config
+
+    def tearDown(self):
+        self.tearDownNursery()
+
+    @defer.inlineCallbacks
+    def _create_client(self):
+        client = protocol.ClientCreator(reactor,
+            tx.ArakoonProtocol, self.CLUSTER_ID)
+
+        cluster_id, nodes = self.client_config
+        ip, port = nodes.values()[0]
+
+        proto = yield client.connectTCP(ip, port)
+
+        try:
+            yield proto.hello('test_nursery_client_tx', cluster_id)
+        except:
+            proto.transport.loseConnection()
+            raise
+
+        defer.returnValue(proto)
+
+    @defer.inlineCallbacks
+    def test_get_nursery_config(self):
+        proto = yield self._create_client()
+
+        try:
+            message = nursery.GetNurseryConfig()
+            config = yield proto._process(message)
+            proto.transport.loseConnection()
+        finally:
+            proto.transport.loseConnection()
