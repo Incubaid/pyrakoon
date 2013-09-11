@@ -125,5 +125,9 @@ class TestNurseryClientTx(twisted.trial.unittest.TestCase,
         try:
             message = nursery.GetNurseryConfig()
             config = yield proto._process(message)
+
+            self.assertEqual(config.routing, nursery.LeafNode(self.CLUSTER_ID))
+            self.assert_(self.CLUSTER_ID in config.clusters)
+
         finally:
             proto.transport.loseConnection()

@@ -151,6 +151,12 @@ class LeafNode(Node):
     def __repr__(self):
         return 'LeafNode(%r)' % self.cluster
 
+    def __eq__(self, other):
+        if not isinstance(other, LeafNode):
+            return NotImplemented
+
+        return self.cluster == other.cluster
+
 class InternalNode(Node):
     '''Nursery routing tree internal node'''
 
@@ -170,6 +176,14 @@ class InternalNode(Node):
     def __repr__(self):
         return 'InternalNode(%r, %r, %r)' % \
             (self.boundary, self.left, self.right)
+
+    def __eq__(self, other):
+        if not isinstance(other, InternalNode):
+            return NotImplemented
+
+        return self.boundary == other.boundary \
+                and self.left == other.left \
+                and self.right == other.right
 
 
 class GetNurseryConfig(protocol.Message):
