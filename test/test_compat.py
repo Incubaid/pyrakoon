@@ -95,10 +95,10 @@ class TestCompatClient(unittest.TestCase, test.ArakoonEnvironmentMixin):
     def test_hello(self):
         '''Say hello to the Arakoon server'''
 
-        self.assertEquals(
-            self._create_client().hello(
-                'testsuite', self.client_config.clusterId),
-            'Arakoon "1.2"')
+        response = self._create_client().hello(
+            'testsuite', self.client_config.clusterId)
+
+        self.assert_('Arakoon' in response)
 
     def test_who_master(self):
         '''Ask who the master is'''
