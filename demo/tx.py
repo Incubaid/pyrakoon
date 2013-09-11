@@ -43,6 +43,7 @@ from pyrakoon import tx
 # Some utility definitions
 DEFAULT_HOST = 'localhost'
 DEFAULT_PORT = 4000
+DEFAULT_CLUSTER_ID = 'ricky'
 DEFAULT_KEY = 'demo_tx_%d'
 DEFAULT_VALUE = 'demo_tx_value'
 
@@ -119,7 +120,8 @@ def create_client(host, port):
     :rtype: `defer.Deferred`
     '''
 
-    client = protocol.ClientCreator(reactor, tx.ArakoonProtocol)
+    client = protocol.ClientCreator(reactor,
+        tx.ArakoonProtocol, DEFAULT_CLUSTER_ID)
 
     return client.connectTCP(host, port)
 

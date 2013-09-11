@@ -52,7 +52,8 @@ class _FakeTransport(object):
 
         self._owner.assertEquals(self._expected, ''.join(self._received))
 
-        self.protocol.dataReceived(self._to_send)
+        if self.protocol:
+            self.protocol.dataReceived(self._to_send)
 
     def loseConnection(self):
         self.disconnecting = True
@@ -64,9 +65,11 @@ class _FakeTransport(object):
 class TestTwistedClient(unittest.TestCase):
     '''Tests for the Twisted client'''
 
-    @staticmethod
-    def _create_client(transport):
-        protocol_ = tx.ArakoonProtocol()
+    CLUSTER_ID = 'test_twisted_client'
+
+    @classmethod
+    def _create_client(cls, transport):
+        protocol_ = tx.ArakoonProtocol(cls.CLUSTER_ID)
         protocol_.makeConnection(transport)
 
         transport.protocol = protocol_
@@ -76,7 +79,8 @@ class TestTwistedClient(unittest.TestCase):
     def test_who_master(self):
         '''Test a successful 'who_master' (no-argument) call'''
 
-        expected = ''.join(protocol.WhoMaster().serialize())
+        expected = protocol.build_prologue(self.CLUSTER_ID)
+        expected += ''.join(protocol.WhoMaster().serialize())
         to_send = ''.join(chr(i) for i in itertools.chain(
             (0, 0, 0, 0),
             (1,),
@@ -94,7 +98,8 @@ class TestTwistedClient(unittest.TestCase):
     def test_hello(self):
         '''Test a successful 'hello' call'''
 
-        expected = ''.join(protocol.Hello('testsuite',
+        expected = protocol.build_prologue(self.CLUSTER_ID)
+        expected += ''.join(protocol.Hello('testsuite',
             'pyrakoon_test').serialize())
         to_send = ''.join(chr(i) for i in itertools.chain(
             (0, 0, 0, 0),
@@ -113,7 +118,8 @@ class TestTwistedClient(unittest.TestCase):
     def test_delete(self):
         '''Test a successful 'delete' (void) call'''
 
-        expected = ''.join(protocol.Delete('key').serialize())
+        expected = protocol.build_prologue(self.CLUSTER_ID)
+        expected += ''.join(protocol.Delete('key').serialize())
         to_send = ''.join(chr(i) for i in (0, 0, 0, 0))
 
         client = self._create_client(_FakeTransport(self, expected, to_send))
@@ -126,7 +132,8 @@ class TestTwistedClient(unittest.TestCase):
     def test_not_found_exception(self):
         '''Test a failing 'get' call'''
 
-        expected = ''.join(protocol.Get('key').serialize())
+        expected = protocol.build_prologue(self.CLUSTER_ID)
+        expected += ''.join(protocol.Get('key').serialize())
         to_send = ''.join(chr(i) for i in itertools.chain(
             (errors.NotFound.CODE, 0, 0, 0),
             (3, 0, 0, 0),
@@ -143,7 +150,8 @@ class TestTwistedClient(unittest.TestCase):
     def test_disconnect(self):
         '''Test disconnect'''
 
-        expected = ''.join(protocol.Hello('testsuite',
+        expected = protocol.build_prologue(self.CLUSTER_ID)
+        expected += ''.join(protocol.Hello('testsuite',
             'pyrakoon_test').serialize())
         # This is not enough data, so we can test disconnect
         to_send = chr(0)
@@ -161,7 +169,8 @@ class TestTwistedClient(unittest.TestCase):
     def test_data_received_without_handler(self):
         '''Test behaviour when data is received when no handler is registered'''
 
-        client = self._create_client(_FakeTransport(self, '', ''))
+        expected = protocol.build_prologue(self.CLUSTER_ID)
+        client = self._create_client(_FakeTransport(self, expected, ''))
 
         client.dataReceived(''.join(chr(i) for i in (0, 0, 0, 0)))
 
