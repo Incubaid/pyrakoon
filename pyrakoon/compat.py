@@ -545,6 +545,26 @@ class ArakoonClient(object):
         return self._client.statistics()
 
 
+    @utils.update_argspec('self')
+    @_convert_exceptions
+    def getVersion(self, nodeId = None):
+        """
+        will return a tuple containing major, minor and patch level versions of the server side
+
+        Note: The nodeId argument is currently not supported
+
+        @type nodeId : String
+        @param nodeId : id of the node you want to query (None if you want to query the master)
+        @rtype : (int,int,int,string)
+        @return : (major, minor, patch, info)
+        """
+
+        if nodeId:
+            raise ValueError('nodeId is not supported')
+
+        return self._client.version()
+
+
     def _dropConnections(self):
         return self._client.drop_connections()
 

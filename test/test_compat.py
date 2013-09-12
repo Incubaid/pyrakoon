@@ -254,3 +254,15 @@ class TestCompatClient(unittest.TestCase, test.ArakoonEnvironmentMixin):
         statistics = client.statistics()
 
         self.assert_('start' in statistics)
+
+    def test_version(self):
+        client = self._create_client()
+
+        version = client.getVersion()
+
+        self.assert_(len(version) == 4)
+        self.assert_(isinstance(version[0], int))
+        self.assert_(isinstance(version[1], int))
+        self.assert_(isinstance(version[2], int))
+        self.assert_(isinstance(version[3], str))
+        self.assertEqual(version[0], 1)

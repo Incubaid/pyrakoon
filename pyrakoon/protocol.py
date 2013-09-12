@@ -1348,6 +1348,25 @@ class Statistics(Message):
     ''')
 
 
+class Version(Message):
+    '''"version" message'''
+
+    __slots__ = ()
+
+    TAG = 0x0028 | Message.MASK
+    ARGS = ()
+    RETURN_TYPE = Product(INT32, INT32, INT32, STRING)
+
+    DOC = utils.format_doc('''
+        Send a "version" command to the server
+
+        This method returns the server version.
+
+        return: Server version
+        :rtype: `(int, int, int, str)`
+     ''')
+
+
 def build_prologue(cluster):
     '''Return the string to send as prologue
 
