@@ -106,6 +106,37 @@ def run(proto):
     for key in keys:
         yield proto.delete(key)
 
+    # Concurrent actions
+    log.msg('Performing concurrent actions')
+
+    make_set = lambda i: \
+        proto.set('multi%d' % i, 'value%d' % i).addCallback(
+            lambda _: log.msg(
+                'Finished set(\'multi%d\', \'value%d\')' % (i, i)))
+
+    yield defer.DeferredList(
+        [make_set(i) for i in xrange(12)],
+        fireOnOneErrback=True
+    )
+
+    acts = [proto.get('multi10'),
+            proto.delete('multi11'),
+            proto.range_entries('multi5', True, 'multi7', False),
+            proto.set('multi1', 'value2')]
+
+    expected = ['value10',
+                None,
+                [('multi5', 'value5'), ('multi6', 'value6')],
+                None]
+
+    result = yield defer.DeferredList(acts, fireOnOneErrback=True)
+    result = [v for (_, v) in result]
+
+    assert result == expected
+
+    multi1 = yield proto.get('multi1')
+    assert multi1 == 'value2'
+
     log.msg('Done')
 
 def create_client(host, port):
