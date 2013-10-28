@@ -412,8 +412,8 @@ class List(Type):
 
         count = request.value
 
-        values = []
-        for _ in xrange(count):
+        values = [None] * count
+        for idx in xrange(count - 1, -1, -1):
             receiver = self._inner_type.receive()
             request = receiver.next() #pylint: disable-msg=E1101
 
@@ -428,9 +428,9 @@ class List(Type):
 
             # Note: can't 'yield' value, otherwise we might not read all values
             # from the stream, and leave it in an unclean state
-            values.append(value)
+            values[idx] = value
 
-        yield Result(iter(values))
+        yield Result(values)
 
 
 class Product(Type):

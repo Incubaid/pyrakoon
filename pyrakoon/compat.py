@@ -144,22 +144,6 @@ def _convert_exceptions(fun):
     return wrapped
 
 
-def _reversed_list(iter_):
-    '''Return a list of the reversed iterable
-
-    :param iter_: Iterable to return as a list, reversed
-    :type iter_: iterable
-
-    :return: Reversed list representation of the iterable
-    :rtype: `list`
-    '''
-
-    result = list(iter_)
-    result.reverse()
-
-    return result
-
-
 class ArakoonClient(object):
     def __init__(self, config):
         """
@@ -344,7 +328,7 @@ class ArakoonClient(object):
         result = self._client.range(beginKey, beginKeyIncluded, endKey,
             endKeyIncluded, maxElements)
 
-        return _reversed_list(result)
+        return result
 
     @utils.update_argspec('self', 'beginKey', 'beginKeyIncluded', 'endKey',
         'endKeyIncluded', ('maxElements', -1))
@@ -378,7 +362,7 @@ class ArakoonClient(object):
         result = self._client.range_entries(beginKey, beginKeyIncluded, endKey,
             endKeyIncluded, maxElements)
 
-        return _reversed_list((key, value) for key, value in result)
+        return result
 
     @utils.update_argspec('self', 'keyPrefix', ('maxElements', -1))
     @_convert_exceptions
@@ -401,7 +385,7 @@ class ArakoonClient(object):
 
         result = self._client.prefix(keyPrefix, maxElements)
 
-        return _reversed_list(result)
+        return result
 
     @utils.update_argspec('self')
     @_convert_exceptions
@@ -445,7 +429,7 @@ class ArakoonClient(object):
         @return: the values associated with the respective keys
         """
 
-        return _reversed_list(self._client.multi_get(keys))
+        return self._client.multi_get(keys)
 
     @utils.update_argspec('self')
     @_convert_exceptions
@@ -533,7 +517,7 @@ class ArakoonClient(object):
         result = self._client.rev_range_entries(beginKey, beginKeyIncluded,
             endKey, endKeyIncluded, maxElements)
 
-        return _reversed_list((key, value) for key, value in result)
+        return result
 
     @utils.update_argspec('self')
     @_convert_exceptions

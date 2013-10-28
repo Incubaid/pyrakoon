@@ -321,9 +321,11 @@ class TestTypeSerialization(unittest.TestCase):
 
         type_ = protocol.List(protocol.BOOL)
 
-        self._run_test(type_, (), tuple)
-        self._run_test(type_, (True,), tuple)
-        self._run_test(type_, (True, False,), tuple)
+        handle = lambda l: tuple(reversed(l))
+
+        self._run_test(type_, (), handle)
+        self._run_test(type_, (True,), handle)
+        self._run_test(type_, (True, False,), handle)
 
     def test_product(self):
         '''Test encoding and decoding of product values'''
@@ -342,7 +344,7 @@ class TestTypeSerialization(unittest.TestCase):
                 protocol.UINT32, protocol.STRING)))
 
         def handler(value):
-            return (value[0], tuple(value[1]), value[2])
+            return (value[0], tuple(reversed(value[1])), value[2])
 
         self._run_test(type_, ((0, ('abc', 'def',), (1, 'abc'))), handler)
         self._run_test(type_, ((0, ('abc',), None)), handler)
