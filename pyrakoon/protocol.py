@@ -1252,7 +1252,7 @@ class Assert(Message):
     HAS_ALLOW_DIRTY = True
 
     DOC = utils.format_doc('''
-        Send an 'assert' command to the server
+        Send an "assert" command to the server
 
         `assert key vo` throws an exception if the value associated with the
         key is not what was expected.
@@ -1271,6 +1271,34 @@ class Assert(Message):
 
     key = property(operator.attrgetter('_key'))
     value = property(operator.attrgetter('_value'))
+
+
+class AssertExists(Message):
+    '''"assert_exists" message'''
+
+    __slots__ = '_key',
+
+    TAG = 0x0029 | Message.MASK
+    ARGS = ('key', STRING),
+    RETURN_TYPE = UNIT
+    HAS_ALLOW_DIRTY = True
+
+    DOC = utils.format_doc('''
+        Send an "assert_exists" command to the server
+
+        `assert_exists key` throws an exception if the key doesn't exist in
+        the database.
+
+        :param key: Key to check
+        :type key: `str`
+    ''')
+
+    def __init__(self, key):
+        super(AssertExists, self).__init__()
+
+        self._key = key
+
+    key = property(operator.attrgetter('_key'))
 
 
 class RevRangeEntries(Message):
@@ -1365,6 +1393,35 @@ class Version(Message):
         return: Server version
         :rtype: `(int, int, int, str)`
      ''')
+
+
+class DeletePrefix(Message):
+    '''"delete_prefix" message'''
+
+    __slots__ = '_prefix',
+
+    TAG = 0x0027 | Message.MASK
+    ARGS = ('prefix', STRING),
+    RETURN_TYPE = UINT32
+
+    DOC = utils.format_doc('''
+        Send a "delete_prefix" command to the server
+
+        `delete_prefix prefix` will delete all key/value-pairs from the
+        database where given `prefix` is a prefix of `key`.
+
+        :param prefix: Prefix of binding keys to delete
+        :type prefix: `str`
+        :return: Number of deleted bindings
+        :rtype: `int`
+    ''')
+
+    def __init__(self, prefix):
+        super(DeletePrefix, self).__init__()
+
+        self._prefix = prefix
+
+    prefix = property(operator.attrgetter('_prefix'))
 
 
 def build_prologue(cluster):

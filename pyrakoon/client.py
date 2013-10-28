@@ -184,6 +184,14 @@ class Client(object):
     def version(self): #pylint: disable-msg=R0201
         assert False
 
+    @call(protocol.AssertExists)
+    def assert_exists(self): #pylint: disable-msg=R0201
+        assert False
+
+    @call(protocol.DeletePrefix)
+    def delete_prefix(self): #pylint: disable-msg=R0201
+        assert False
+
     __getitem__ = get
     __setitem__ = set
     __delitem__ = delete

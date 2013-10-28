@@ -38,7 +38,7 @@ except ImportError:
 
     del sys, os_path, path
 
-from pyrakoon import tx
+from pyrakoon import errors, tx
 
 # Some utility definitions
 DEFAULT_HOST = 'localhost'
@@ -136,6 +136,20 @@ def run(proto):
 
     multi1 = yield proto.get('multi1')
     assert multi1 == 'value2'
+
+    cnt = yield proto.delete_prefix('foo_')
+    log.msg('Deleted %d entries' % cnt)
+    cnt = yield proto.delete_prefix('multi')
+    log.msg('Deleted %d entries' % cnt)
+
+    try:
+        yield proto.assert_exists('foobar')
+        assert False
+    except errors.AssertionFailed:
+        pass
+
+    yield proto.set('exists', '1')
+    yield proto.assert_exists('exists')
 
     log.msg('Done')
 
