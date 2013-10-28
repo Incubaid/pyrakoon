@@ -146,7 +146,7 @@ def run(proto):
         yield proto.assert_exists('foobar')
         assert False
     except errors.AssertionFailed:
-        pass
+        log.err(None, 'Expected assertion failure')
 
     yield proto.set('exists', '1')
     yield proto.assert_exists('exists')
