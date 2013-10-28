@@ -1390,7 +1390,7 @@ class Version(Message):
 
         This method returns the server version.
 
-        return: Server version
+        :return: Server version
         :rtype: `(int, int, int, str)`
      ''')
 
