@@ -54,11 +54,35 @@ class NotFound(KeyError, ArakoonError): #pylint: disable-msg=R0901
 
     CODE = 0x0005
 
+class WrongCluster(ValueError, ArakoonError):
+    '''Wrong cluster ID passed'''
+
+    CODE = 0x0006
+
 class AssertionFailed(ArakoonError):
     '''Assertion failed'''
 
     CODE = 0x0007
 
+class ReadOnly(ArakoonError):
+    '''Node is read-only'''
+
+    CODE = 0x0008
+
+class OutsideInterval(ValueError, ArakoonError):
+    '''Request outside interval handled by node'''
+
+    CODE = 0x0009
+
+class GoingDown(ArakoonError):
+    '''Node is going down'''
+
+    CODE = 0x0010
+
+class NotSupported(ArakoonError):
+    '''Unsupported operation'''
+
+    CODE = 0x0020
 
 class UnknownFailure(ArakoonError):
     '''Unknown failure'''
