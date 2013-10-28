@@ -25,7 +25,6 @@
 .. _Arakoon: http://www.arakoon.org
 '''
 
-import threading
 import collections
 
 from twisted.internet import defer, protocol as twisted_protocol
@@ -88,7 +87,6 @@ class ArakoonProtocol(client.Client, stateful.StatefulProtocol,
 
         self._connected = False
         self._deferredLock = defer.DeferredLock()
-        self._threadLock = threading.Lock()
 
         self._cluster_id = cluster_id
 
@@ -97,25 +95,23 @@ class ArakoonProtocol(client.Client, stateful.StatefulProtocol,
         self.transport.write(prologue)
 
     def _process(self, message):
-        # Not sure we really want/need all this locking stuff...
-
         deferred = defer.Deferred()
-        self._handlers.append((message.receive(), deferred))
 
         def process(_):
             '''Write command bytes on the channel'''
 
-            self._threadLock.acquire()
+            self._handlers.append((message.receive(), deferred))
 
             try:
                 for data in message.serialize():
                     self.transport.write(data)
 
             finally:
-                try:
-                    self._threadLock.release()
-                finally:
-                    self._deferredLock.release()
+                # TODO If the above fails, we leave the socket in some unclean
+                # state, so instead of releasing the lock, we should close the
+                # socket, errback all outstanding request, then release the
+                # lock.
+                self._deferredLock.release()
 
         self._deferredLock.acquire().addCallback(process)
 
@@ -132,7 +128,7 @@ class ArakoonProtocol(client.Client, stateful.StatefulProtocol,
         self._currentHandler = None
 
         try:
-            self._currentHandler = handler = self._handlers.pop()
+            self._currentHandler = handler = self._handlers.popleft()
         except IndexError:
             log.msg('Request data received but no handler registered')
             self.transport.loseConnection()
