@@ -67,11 +67,18 @@ except AttributeError:
             self.transport.stopProducing()
 
 
+class NotConnectedError(RuntimeError):
+    '''
+    Error used to indicate an `ArakoonProtocol` isn't connected to a transport
+    '''
+
+
 class ArakoonProtocol(client.Client, stateful.StatefulProtocol,
     _PauseableMixin):
     '''Protocol to access an Arakoon server'''
 
     _INITIAL_REQUEST_SIZE = protocol.UINT32.PACKER.size
+    connected = False
 
     def __init__(self, cluster_id):
         '''Initialize a new `ArakoonProtocol`
@@ -82,63 +89,45 @@ class ArakoonProtocol(client.Client, stateful.StatefulProtocol,
 
         client.Client.__init__(self)
 
-        self._awaiting = set()
         self._outstanding = collections.deque()
         self._currentHandler = None
 
-        self._deferredLock = defer.DeferredLock()
-
         self._cluster_id = cluster_id
 
-    def connectionMade(self):
-        prologue = protocol.build_prologue(self._cluster_id)
-        self.transport.write(prologue)
-
     def _process(self, message):
+        if not self.connected:
+            return defer.fail(NotConnectedError('Protocol not connected'))
+
         deferred = defer.Deferred()
+        self._outstanding.append((message.receive, deferred))
 
-        def process(_):
-            '''Write command bytes on the channel'''
-
-            self._awaiting.remove(deferred)
-            self._outstanding.append((message.receive(), deferred))
-
-            try:
-                for data in message.serialize():
-                    self.transport.write(data)
-
-            finally:
-                # TODO If the above fails, we leave the socket in some unclean
-                # state, so instead of releasing the lock, we should close the
-                # socket, errback all outstanding request, then release the
-                # lock.
-                self._deferredLock.release()
-
-        self._awaiting.add(deferred)
-
-        self._deferredLock.acquire().addCallback(process)
+        data = list(message.serialize())
+        self.transport.writeSequence(data)
 
         return deferred
 
     def getInitialState(self):
-        self._currentHandler = None
+        assert self._currentHandler == None
 
         return self._responseCodeReceived, self._INITIAL_REQUEST_SIZE
 
     def _responseCodeReceived(self, data):
         '''Handler for server command response codes'''
 
-        self._currentHandler = None
+        assert self._currentHandler == None
 
         try:
-            self._currentHandler = handler = self._outstanding.popleft()
+            handler = self._outstanding.popleft()
         except IndexError:
             log.msg('Request data received but no handler registered')
             self.transport.loseConnection()
 
             return None
 
-        request = handler[0].next()
+        receiver = handler[0]()
+        self._currentHandler = (receiver, handler[1])
+
+        request = receiver.next()
 
         if isinstance(request, protocol.Result):
             return self._handleResult(request)
@@ -176,9 +165,18 @@ class ArakoonProtocol(client.Client, stateful.StatefulProtocol,
         except Exception, exc: #pylint: disable-msg=W0703
             if not isinstance(exc, errors.ArakoonError):
                 log.err(exc, 'Exception raised by message receive loop')
-            deferred.errback(exc)
 
-            return self.getInitialState()
+                deferred.errback(exc)
+                self.transport.loseConnection()
+
+                return None
+            else:
+                deferred.errback(exc)
+
+                self._currentHandler = None
+                utils.kill_coroutine(receiver, lambda msg: log.err(None, msg))
+
+                return self.getInitialState()
 
         if isinstance(request, protocol.Result):
             return self._handleResult(request)
@@ -199,14 +197,24 @@ class ArakoonProtocol(client.Client, stateful.StatefulProtocol,
         receiver, deferred = self._currentHandler
         self._currentHandler = None
 
+        deferred.callback(result.value)
+
         # To be on the safe side...
         utils.kill_coroutine(receiver, lambda msg: log.err(None, msg))
 
-        deferred.callback(result.value)
-
         return self.getInitialState()
 
+    def connectionMade(self):
+        prologue = protocol.build_prologue(self._cluster_id)
+        self.transport.write(prologue)
+
+        self.connected = True
+
+        return stateful.StatefulProtocol.connectionMade(self)
+
     def connectionLost(self, reason=twisted_protocol.connectionDone):
+        self.connected = False
+
         self._cancelHandlers(reason)
 
         return stateful.StatefulProtocol.connectionLost(self, reason)
@@ -220,26 +228,25 @@ class ArakoonProtocol(client.Client, stateful.StatefulProtocol,
         :type reason: `twisted.python.failure.Failure`
         '''
 
-        log.msg('Canceling all outstanding requests')
+        if self._currentHandler:
+            log.msg('Canceling current handler')
+
+            receiver, deferred = self._currentHandler
+            self._currentHandler = None
+
+            if not deferred.called:
+                deferred.errback(reason)
+
+            utils.kill_coroutine(receiver, lambda msg: log.err(None, msg))
+
+        log.msg('Canceling %d outstanding requests' % len(self._outstanding))
 
         while True:
             try:
-                receiver, deferred = self._outstanding.popleft()
+                _, deferred = self._outstanding.popleft()
             except IndexError:
                 break
-
-            utils.kill_coroutine(receiver, lambda msg: log.err(None, msg))
 
             deferred.errback(reason)
 
         assert len(self._outstanding) == 0
-
-        while True:
-            try:
-                deferred = self._awaiting.pop()
-            except KeyError:
-                break
-
-            deferred.errback(reason)
-
-        assert len(self._awaiting) == 0

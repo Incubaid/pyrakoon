@@ -23,6 +23,11 @@
 
 import itertools
 
+try:
+    import cStringIO as StringIO
+except ImportError:
+    import StringIO
+
 from twisted.internet import defer, error
 from twisted.trial import unittest
 
@@ -40,20 +45,23 @@ class _FakeTransport(object):
 
         self.protocol = None
 
-        self._received = []
+        self._received = StringIO.StringIO()
 
         self.loseConnectionDeferred = defer.Deferred()
 
     def write(self, data):
-        self._received.extend(data)
+        self._received.write(data)
 
-        if len(self._received) < len(self._expected):
+        if self._received.tell() < len(self._expected):
             return
 
-        self._owner.assertEquals(self._expected, ''.join(self._received))
+        self._owner.assertEquals(self._expected, self._received.getvalue())
 
         if self.protocol:
             self.protocol.dataReceived(self._to_send)
+
+    def writeSequence(self, data):
+        map(self.write, data)
 
     def loseConnection(self):
         self.disconnecting = True
