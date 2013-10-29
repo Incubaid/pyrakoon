@@ -82,10 +82,10 @@ class ArakoonProtocol(client.Client, stateful.StatefulProtocol,
 
         client.Client.__init__(self)
 
-        self._handlers = collections.deque()
+        self._awaiting = set()
+        self._outstanding = collections.deque()
         self._currentHandler = None
 
-        self._connected = False
         self._deferredLock = defer.DeferredLock()
 
         self._cluster_id = cluster_id
@@ -100,7 +100,8 @@ class ArakoonProtocol(client.Client, stateful.StatefulProtocol,
         def process(_):
             '''Write command bytes on the channel'''
 
-            self._handlers.append((message.receive(), deferred))
+            self._awaiting.remove(deferred)
+            self._outstanding.append((message.receive(), deferred))
 
             try:
                 for data in message.serialize():
@@ -112,6 +113,8 @@ class ArakoonProtocol(client.Client, stateful.StatefulProtocol,
                 # socket, errback all outstanding request, then release the
                 # lock.
                 self._deferredLock.release()
+
+        self._awaiting.add(deferred)
 
         self._deferredLock.acquire().addCallback(process)
 
@@ -128,7 +131,7 @@ class ArakoonProtocol(client.Client, stateful.StatefulProtocol,
         self._currentHandler = None
 
         try:
-            self._currentHandler = handler = self._handlers.popleft()
+            self._currentHandler = handler = self._outstanding.popleft()
         except IndexError:
             log.msg('Request data received but no handler registered')
             self.transport.loseConnection()
@@ -204,8 +207,6 @@ class ArakoonProtocol(client.Client, stateful.StatefulProtocol,
         return self.getInitialState()
 
     def connectionLost(self, reason=twisted_protocol.connectionDone):
-        self._connected = False
-
         self._cancelHandlers(reason)
 
         return stateful.StatefulProtocol.connectionLost(self, reason)
@@ -219,9 +220,26 @@ class ArakoonProtocol(client.Client, stateful.StatefulProtocol,
         :type reason: `twisted.python.failure.Failure`
         '''
 
-        while self._handlers:
-            receiver, deferred = self._handlers.popleft()
+        log.msg('Canceling all outstanding requests')
+
+        while True:
+            try:
+                receiver, deferred = self._outstanding.popleft()
+            except IndexError:
+                break
 
             utils.kill_coroutine(receiver, lambda msg: log.err(None, msg))
 
             deferred.errback(reason)
+
+        assert len(self._outstanding) == 0
+
+        while True:
+            try:
+                deferred = self._awaiting.pop()
+            except KeyError:
+                break
+
+            deferred.errback(reason)
+
+        assert len(self._awaiting) == 0
