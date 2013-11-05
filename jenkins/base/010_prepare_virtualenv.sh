@@ -2,7 +2,7 @@
 
 echo "Installing dependencies"
 sudo aptitude update
-sudo aptitude install -yVDq python-dev libev4
+sudo aptitude install -yVDq python-dev libev4 libsnappy1
 
 sudo aptitude install -yVDq \
     pylint \
