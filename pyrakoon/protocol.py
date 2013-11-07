@@ -609,6 +609,9 @@ class Message(object):
     HAS_ALLOW_DIRTY = False
     '''Marker whether the command has an 'allow dirty' flag''' #pylint: disable-msg=W0105, C0301
 
+    _tag_bytes = None
+    '''Serialized representation of `_TAG`''' #pylint: disable-msg=W0105
+
     def serialize(self):
         '''Serialize the command
 
@@ -616,8 +619,10 @@ class Message(object):
         :rtype: iterable of `str`
         '''
 
-        for bytes_ in UINT32.serialize(self.TAG):
-            yield bytes_
+        if self._tag_bytes is None:
+            self._tag_bytes = ''.join(UINT32.serialize(self.TAG))
+
+        yield self._tag_bytes
 
         # TODO: Hack -> never allow dirty reads, for now
         if self.HAS_ALLOW_DIRTY:
