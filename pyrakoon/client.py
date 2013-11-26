@@ -226,7 +226,7 @@ class Client(object):
 class SocketClient(Client):
     '''Arakoon client using TCP to contact the cluster'''
 
-    def __init__(self):
+    def __init__(self, cluster_id):
         import threading
 
         super(SocketClient, self).__init__()
@@ -234,6 +234,7 @@ class SocketClient(Client):
         self._lock = threading.Lock()
 
         self._socket = None
+        self._cluster_id = cluster_id
 
     def connect(self):
         '''Create client socket and connect to server'''
@@ -241,6 +242,8 @@ class SocketClient(Client):
         import socket
 
         self._socket = socket.create_connection(('127.0.0.1', 4000))
+        prologue = protocol.build_prologue(self._cluster_id)
+        self._socket.sendall(prologue)
 
     @property
     def connected(self):
