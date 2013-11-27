@@ -50,6 +50,9 @@ class Request(object): #pylint: disable-msg=R0903
     def __init__(self, count):
         self._count = count
 
+    def __repr__(self):
+        return 'Request(%d)' % self.count
+
     count = property(operator.attrgetter('_count'))
 
 class Result(object): #pylint: disable-msg=R0903
@@ -59,6 +62,9 @@ class Result(object): #pylint: disable-msg=R0903
 
     def __init__(self, value):
         self._value = value
+
+    def __repr__(self):
+        return 'Result(%r)' % self.value
 
     value = property(operator.attrgetter('_value'))
 
