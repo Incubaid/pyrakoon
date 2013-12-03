@@ -24,7 +24,7 @@
 import logging
 import functools
 
-from pyrakoon import protocol, utils
+from pyrakoon import errors, protocol, utils
 
 LOGGER = logging.getLogger(__name__)
 '''Logger for code in this module''' #pylint: disable-msg=W0105
@@ -226,7 +226,7 @@ class Client(object):
 class SocketClient(Client):
     '''Arakoon client using TCP to contact the cluster'''
 
-    def __init__(self, cluster_id):
+    def __init__(self, address, cluster_id):
         import threading
 
         super(SocketClient, self).__init__()
@@ -234,6 +234,7 @@ class SocketClient(Client):
         self._lock = threading.Lock()
 
         self._socket = None
+        self._address = address
         self._cluster_id = cluster_id
 
     def connect(self):
@@ -241,7 +242,7 @@ class SocketClient(Client):
 
         import socket
 
-        self._socket = socket.create_connection(('127.0.0.1', 4000))
+        self._socket = socket.create_connection(self._address)
         prologue = protocol.build_prologue(self._cluster_id)
         self._socket.sendall(prologue)
 
@@ -259,11 +260,13 @@ class SocketClient(Client):
                 self._socket.sendall(part)
 
             return utils.read_blocking(message.receive(), self._socket.recv)
-        except Exception:
-            try:
-                self._socket.close()
-            finally:
-                self._socket = None
+        except Exception as exc:
+            if not isinstance(exc, errors.ArakoonError):
+                try:
+                    if self._socket:
+                        self._socket.close()
+                finally:
+                    self._socket = None
 
             raise
         finally:
