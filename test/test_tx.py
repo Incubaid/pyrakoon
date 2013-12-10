@@ -31,7 +31,7 @@ except ImportError:
 from twisted.internet import defer, error
 from twisted.trial import unittest
 
-from pyrakoon import errors, protocol, tx
+from pyrakoon import client, errors, protocol, tx
 
 bytes_ = lambda str_: (ord(c) for c in str_)
 
@@ -70,6 +70,10 @@ class _FakeTransport(object):
         self.loseConnectionDeferred.callback(None)
 
 
+class ArakoonClientProtocol(tx.ArakoonProtocol, client.ClientMixin):
+    '''Twisted Arakoon client protocol'''
+
+
 class TestTwistedClient(unittest.TestCase):
     '''Tests for the Twisted client'''
 
@@ -77,7 +81,7 @@ class TestTwistedClient(unittest.TestCase):
 
     @classmethod
     def _create_client(cls, transport):
-        protocol_ = tx.ArakoonProtocol(cls.CLUSTER_ID)
+        protocol_ = ArakoonClientProtocol(cls.CLUSTER_ID)
         protocol_.makeConnection(transport)
 
         transport.protocol = protocol_

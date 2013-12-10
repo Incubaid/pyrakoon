@@ -74,7 +74,7 @@ class NotConnectedError(RuntimeError):
 
 
 class ArakoonProtocol(object,
-    client.AbstractClient, client.ClientMixin,
+    client.AbstractClient,
     stateful.StatefulProtocol, _PauseableMixin):
     '''Protocol to access an Arakoon server'''
 

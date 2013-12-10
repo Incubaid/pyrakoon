@@ -27,7 +27,7 @@ import unittest
 from twisted.internet import defer, error, interfaces, protocol, reactor
 import twisted.trial.unittest
 
-from pyrakoon import compat, nursery, test, tx
+from pyrakoon import client, compat, nursery, test, tx
 
 LOGGER = logging.getLogger(__name__)
 
@@ -86,6 +86,10 @@ class TestNurseryClient(unittest.TestCase, test.NurseryEnvironmentMixin):
         client.delete('key')
 
 
+class ArakoonClientProtocol(tx.ArakoonProtocol, client.ClientMixin):
+    '''Twisted Arakoon client protocol'''
+
+
 class TestNurseryClientTx(twisted.trial.unittest.TestCase,
     test.NurseryEnvironmentMixin):
     '''Test Twisted code against an Arakoon nursery setup'''
@@ -103,7 +107,7 @@ class TestNurseryClientTx(twisted.trial.unittest.TestCase,
     @defer.inlineCallbacks
     def _create_client(self):
         client = protocol.ClientCreator(reactor,
-            tx.ArakoonProtocol, self.CLUSTER_ID)
+            ArakoonClientProtocol, self.CLUSTER_ID)
 
         cluster_id, nodes = self.client_config
         ip, port = nodes.values()[0]
