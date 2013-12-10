@@ -35,24 +35,25 @@ except ImportError:
     HAS_NOSE = False
 
 from pyrakoon import client, errors, protocol, test, utils
+from pyrakoon.client import utils as client_utils
 
 class TestValidateTypes(unittest.TestCase):
-    '''Tests for `pyrakoon.client.validate_types`'''
+    '''Tests for `pyrakoon.client_utils.validate_types`'''
 
     def test_no_arguments(self):
         '''Test `validate_types` if no arguments are expected'''
 
-        client.validate_types((), ())
+        client_utils.validate_types((), ())
 
     def test_single_correct_argument(self):
         '''Test `validate_types` if one correct argument is provided'''
 
-        client.validate_types((('name', protocol.STRING), ), ('name', ))
+        client_utils.validate_types((('name', protocol.STRING), ), ('name', ))
 
     def test_single_incorrect_argument(self):
         '''Test `validate_types` if one incorrect argument is provided'''
 
-        run_test = lambda value: client.validate_types(
+        run_test = lambda value: client_utils.validate_types(
             (('i', protocol.UINT32), ), (value, ))
 
         self.assertRaises(ValueError, run_test, -1)
@@ -61,7 +62,7 @@ class TestValidateTypes(unittest.TestCase):
     def test_multiple_correct_arguments(self):
         '''Test `validate_types` with multiple correct arguments'''
 
-        client.validate_types((
+        client_utils.validate_types((
             ('name', protocol.STRING),
             ('age', protocol.Option(protocol.UINT32)),
         ), ('name', None, ))
@@ -69,7 +70,7 @@ class TestValidateTypes(unittest.TestCase):
     def test_multiple_incorrect_arguments(self):
         '''Test `validate_types` with multiple incorrect arguments'''
 
-        run_test = lambda value: client.validate_types((
+        run_test = lambda value: client_utils.validate_types((
             ('name', protocol.STRING),
             ('age', protocol.Option(protocol.UINT32)),
         ), ('name', value, ))

@@ -24,79 +24,9 @@
 import logging
 import functools
 
-from pyrakoon import errors, protocol, utils
-
-LOGGER = logging.getLogger(__name__)
-'''Logger for code in this module''' #pylint: disable-msg=W0105
-
-def validate_types(specs, args):
-    '''Validate method call argument types
-
-    :param specs: Spec of expected types
-    :type specs: iterable of (`str`, `pyrakoon.protocol.Type`,)
-    :param args: Argument values
-    :type args: iterable of `object`
-
-    :raise TypeError: Type of an argument is invalid
-    :raise ValueError: Value of an argument is invalid
-    '''
-
-    for spec, arg in zip(specs, args):
-        name, type_ = spec[:2]
-
-        try:
-            type_.check(arg)
-        except TypeError:
-            raise TypeError('Invalid type of argument "%s"' % name)
-        except ValueError:
-            raise ValueError('Invalid value of argument "%s"' % name)
-
-
-def call(message_type):
-    '''Expose a `pyrakoon.protocol.Message` as a method on a client
-
-    :param message_type: Type of the message this method should call
-    :type message_type: `type`
-
-    :return: Method which wraps a call to an Arakoon server using given message
-        type
-    :rtype: `callable`
-    '''
-
-    def wrapper(fun):
-        '''Decorator helper'''
-
-        # Calculate argspec of final method
-        argspec = ['self']
-        for arg in message_type.ARGS:
-            if len(arg) == 2:
-                argspec.append(arg[0])
-            elif len(arg) == 3:
-                argspec.append((arg[0], arg[2]))
-            else:
-                raise ValueError
-
-        @utils.update_argspec(*argspec) #pylint: disable-msg=W0142
-        @functools.wraps(fun)
-        def wrapped(**kwargs): #pylint: disable-msg=C0111
-            self = kwargs['self']
-
-            if not self.connected:
-                raise RuntimeError('Not connected')
-
-            args = tuple(kwargs[arg[0]] for arg in message_type.ARGS)
-            validate_types(message_type.ARGS, args)
-
-            message = message_type(*args) #pylint: disable-msg=W0142
-
-            return self._process(message) #pylint: disable-msg=W0212
-
-        wrapped.__doc__ = message_type.DOC #pylint: disable-msg=W0622
-
-        return wrapped
-
-    return wrapper
-
+from pyrakoon import errors, protocol
+import pyrakoon.utils
+from pyrakoon.client.utils import call
 
 #pylint: disable-msg=C0111,R0904
 class Client(object):
@@ -259,7 +189,8 @@ class SocketClient(Client):
             for part in message.serialize():
                 self._socket.sendall(part)
 
-            return utils.read_blocking(message.receive(), self._socket.recv)
+            return pyrakoon.utils.read_blocking(
+                message.receive(), self._socket.recv)
         except Exception as exc:
             if not isinstance(exc, errors.ArakoonError):
                 try:
