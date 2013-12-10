@@ -69,6 +69,8 @@ options(
 
         packages=[
             'pyrakoon',
+            'pyrakoon.client',
+            'pyrakoon.protocol',
         ],
 
         test_suite = 'nose.collector',
