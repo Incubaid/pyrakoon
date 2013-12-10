@@ -158,7 +158,7 @@ class AbstractClient: #pylint: disable-msg=W0232,R0903,R0922
 
 
 #pylint: disable-msg=R0904
-class SocketClient(object, AbstractClient, ClientMixin):
+class SocketClient(object, AbstractClient):
     '''Arakoon client using TCP to contact the cluster'''
 
     def __init__(self, address, cluster_id):
