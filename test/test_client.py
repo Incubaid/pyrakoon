@@ -82,10 +82,13 @@ class TestValidateTypes(unittest.TestCase):
 class TestClient(unittest.TestCase):
     '''Test the `Client` class'''
 
+    class Client(client.AbstractClient, client.ClientMixin):
+        '''A dummy client'''
+
     def test_invalid_argument_type(self):
         '''Test argument validation of command methods'''
 
-        client_ = client.Client()
+        client_ = self.Client()
         client_.connected = True
 
         self.assertRaises(TypeError, client_.hello, 123)
@@ -93,7 +96,7 @@ class TestClient(unittest.TestCase):
     def test_not_connected(self):
         '''Test connection check'''
 
-        client_ = client.Client()
+        client_ = self.Client()
 
         self.assertRaises(RuntimeError, client_.hello, 'testsuite',
             'pyrakoon_test')

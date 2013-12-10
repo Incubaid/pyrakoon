@@ -39,7 +39,7 @@ from pyrakoon import client, compat, errors, protocol, utils
 
 LOGGER = logging.getLogger(__name__)
 
-class FakeClient(client.Client):
+class FakeClient(object, client.AbstractClient, client.ClientMixin):
     '''Fake, in-memory Arakoon client'''
 
     VERSION = 'FakeRakoon/0.1'

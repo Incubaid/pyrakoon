@@ -73,8 +73,9 @@ class NotConnectedError(RuntimeError):
     '''
 
 
-class ArakoonProtocol(client.Client, stateful.StatefulProtocol,
-    _PauseableMixin):
+class ArakoonProtocol(object,
+    client.AbstractClient, client.ClientMixin,
+    stateful.StatefulProtocol, _PauseableMixin):
     '''Protocol to access an Arakoon server'''
 
     _INITIAL_REQUEST_SIZE = protocol.UINT32.PACKER.size
@@ -87,7 +88,7 @@ class ArakoonProtocol(client.Client, stateful.StatefulProtocol,
         :type cluster_id: `str`
         '''
 
-        client.Client.__init__(self)
+        super(ArakoonProtocol, self).__init__()
 
         self._outstanding = collections.deque()
         self._currentHandler = None

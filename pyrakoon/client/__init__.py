@@ -21,19 +21,19 @@
 
 '''Arakoon client interface'''
 
-import logging
-import functools
-
 from pyrakoon import errors, protocol
 import pyrakoon.utils
 from pyrakoon.client.utils import call
 
-#pylint: disable-msg=C0111,R0904
-class Client(object):
-    '''Abstract base class for implementations of Arakoon clients'''
+class ClientMixin: #pylint: disable-msg=W0232,R0904
+    '''Mixin providing client actions for standard cluster functionality
 
-    connected = False
+    This can be mixed into any class implementing `AbstractClient`.
 
+    :see: `AbstractClient`
+    '''
+
+    #pylint: disable-msg=C0111
     @call(protocol.Hello)
     def hello(self): #pylint: disable-msg=R0201
         assert False
@@ -127,6 +127,12 @@ class Client(object):
     __delitem__ = delete
     __contains__ = exists
 
+
+class AbstractClient: #pylint: disable-msg=W0232,R0903,R0922
+    '''Abstract base class for implementations of Arakoon clients'''
+
+    connected = False
+
     def _process(self, message):
         '''
         Submit a message to the server, parse the result and return it
@@ -150,10 +156,9 @@ class Client(object):
 
         raise NotImplementedError
 
-#pylint: enable-msg=C0111
 
-
-class SocketClient(Client):
+#pylint: disable-msg=R0904
+class SocketClient(object, AbstractClient, ClientMixin):
     '''Arakoon client using TCP to contact the cluster'''
 
     def __init__(self, address, cluster_id):

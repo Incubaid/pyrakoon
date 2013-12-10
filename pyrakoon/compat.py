@@ -820,7 +820,7 @@ class ArakoonClientConfig :
 
 
 # Actual client implementation
-class _ArakoonClient(client.Client):
+class _ArakoonClient(object, client.AbstractClient, client.ClientMixin):
     def __init__(self, config):
         self._config = config
         self.master_id = None
