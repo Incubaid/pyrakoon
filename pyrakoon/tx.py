@@ -67,12 +67,6 @@ except AttributeError:
             self.transport.stopProducing()
 
 
-class NotConnectedError(RuntimeError):
-    '''
-    Error used to indicate an `ArakoonProtocol` isn't connected to a transport
-    '''
-
-
 class ArakoonProtocol(object,
     client.AbstractClient,
     stateful.StatefulProtocol, _PauseableMixin):
@@ -97,7 +91,8 @@ class ArakoonProtocol(object,
 
     def _process(self, message):
         if not self.connected:
-            return defer.fail(NotConnectedError('Protocol not connected'))
+            return defer.fail(
+                client.NotConnectedError('Protocol not connected'))
 
         deferred = defer.Deferred()
         self._outstanding.append((message.receive, deferred))

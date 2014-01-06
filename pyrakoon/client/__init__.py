@@ -132,6 +132,10 @@ class ClientMixin: #pylint: disable-msg=W0232,R0904
     __contains__ = exists
 
 
+class NotConnectedError(RuntimeError):
+    '''Error used when a call on a not-connected client is made'''
+
+
 class AbstractClient: #pylint: disable-msg=W0232,R0903,R0922
     '''Abstract base class for implementations of Arakoon clients'''
 

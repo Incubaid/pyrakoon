@@ -92,7 +92,8 @@ def call(message_type):
             self = kwargs['self']
 
             if not self.connected:
-                raise RuntimeError('Not connected')
+                from pyrakoon import client
+                raise client.NotConnectedError('Not connected')
 
             args = tuple(kwargs[arg[0]] for arg in message_type.ARGS)
             validate_types(message_type.ARGS, args)
