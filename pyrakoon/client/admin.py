@@ -1,6 +1,6 @@
 # This file is part of Pyrakoon, a distributed key-value store client.
 #
-# Copyright (C) 2013 Incubaid BVBA
+# Copyright (C) 2013, 2014 Incubaid BVBA
 #
 # Licensees holding a valid Incubaid license may use this file in
 # accordance with Incubaid's Arakoon commercial license agreement. For
@@ -44,4 +44,8 @@ class ClientMixin: #pylint: disable-msg=W0232
 
     @utils.call(admin.DropMaster) #pylint: disable-msg=E1101
     def drop_master(self):
+        assert False
+
+    @utils.call(admin.CollapseTlogs) #pylint: disable-msg=E1101
+    def collapse_tlogs(self):
         assert False
