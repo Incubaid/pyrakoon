@@ -1462,6 +1462,40 @@ class DeletePrefix(Message):
     prefix = property(operator.attrgetter('_prefix'))
 
 
+class Replace(Message):
+    '''"replace" message'''
+
+    __slots__ = '_key', '_value',
+
+    TAG = 0x0033 | Message.MASK
+    ARGS = ('key', STRING), ('value', Option(STRING)),
+    RETURN_TYPE = Option(STRING)
+
+    DOC = utils.format_doc('''
+        Send a "replace" command to the server
+
+        `replace key value` will replace the value bound to the given key with
+        the provided value, and return the old value bound to the key.
+        If `value` is `None`, the key is deleted.
+        If the key was not present in the database, `None` is returned.
+
+        :param key: Key to replace
+        :type key: `str`
+        :param value: Value to set
+        :type value: `str` or `None`
+
+        :return: Original value bound to the key
+        :rtype: `str` or `None`
+    ''')
+
+    def __init__(self, key, value):
+        self._key = key
+        self._value = value
+
+    key = property(operator.attrgetter('_key'))
+    value = property(operator.attrgetter('_value'))
+
+
 class Nop(Message):
     '''"nop" message'''
 

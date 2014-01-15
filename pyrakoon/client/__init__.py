@@ -122,6 +122,10 @@ class ClientMixin: #pylint: disable-msg=W0232,R0904
     def delete_prefix(self): #pylint: disable-msg=R0201
         assert False
 
+    @call(protocol.Replace)
+    def replace(self): #pylint: disable-msg=R0201
+        assert False
+
     @call(protocol.Nop)
     def nop(self): #pylint: disable-msg=R0201
         assert False
