@@ -1429,6 +1429,23 @@ class DeletePrefix(Message):
     prefix = property(operator.attrgetter('_prefix'))
 
 
+class Nop(Message):
+    '''"nop" message'''
+
+    __slots__ = ()
+
+    TAG = 0x0041 | Message.MASK
+    ARGS = ()
+    RETURN_TYPE = UNIT
+
+    DOC = utils.format_doc('''
+        Send a "nop" command to the server
+
+        This enforces consensus throughout a cluster, but has no further
+        effects.
+    ''')
+
+
 def build_prologue(cluster):
     '''Return the string to send as prologue
 
