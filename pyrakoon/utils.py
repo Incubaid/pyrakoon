@@ -99,7 +99,7 @@ def update_argspec(*argnames): #pylint: disable-msg=R0912
         'Hello, Nicolas, who is 25 years old'
 
     :param argnames: Names of the arguments to be used
-    :type argnames: iterable of `str` or (`str`, `object`)
+    :type argnames: iterable of :class:`str` or `(str, object)`
 
     :return: Decorator which wraps a given callable into one with a correct
         argspec
@@ -222,10 +222,10 @@ def format_doc(doc):
     lines, and stitch everything back together.
 
     :param doc: Docstring to format
-    :type doc: `str` or `unicode`
+    :type doc: :class:`str` or :class:`unicode`
 
     :return: Formatted docstring
-    :rtype: `unicode`
+    :rtype: :class:`unicode`
     '''
 
     if isinstance(doc, str):
@@ -235,7 +235,7 @@ def format_doc(doc):
 
 
 def kill_coroutine(coroutine, log_fun=None):
-    '''Kill a coroutine by injecting `StopIteration`
+    '''Kill a coroutine by injecting :exc:`StopIteration`
 
     If the coroutine has exited already, we ignore any errors.
 
@@ -274,7 +274,7 @@ def kill_coroutine(coroutine, log_fun=None):
         Error: Failure while killing coroutine
 
     :param coroutine: Coroutine to kill
-    :type coroutine: *generator*
+    :type coroutine: `generator`
     :param log_fun: Function to call when an exception is encountered
     :type log_fun: `callable`
     '''
@@ -293,22 +293,22 @@ def process_blocking(message, stream):
     '''Process a message using a blocking stream API
 
     The given `message` will be serialized and written to the stream. Once the
-    message was written, the result will be read using `read_blocking`.
+    message was written, the result will be read using :func:`read_blocking`.
 
     The given stream object should implement `write` and `read` methods,
     somewhat like the file interface.
 
     :param message: Message to process
-    :type message: `pyrakoon.protocol.Message`
+    :type message: :class:`pyrakoon.protocol.Message`
     :param stream: Stream to work on
-    :type stream: `object`
+    :type stream: :obj:`object`
 
     :return: Result of the command execution
-    :rtype: `object`
+    :rtype: :obj:`object`
 
-    :see: `Client._process`
-    :see: `pyrakoon.protocol.Message.serialize`
-    :see: `pyrakoon.prococol.Message.receive`
+    :see: :meth:`pyrakoon.client.AbstractClient._process`
+    :see: :meth:`pyrakoon.protocol.Message.serialize`
+    :see: :meth:`pyrakoon.protocol.Message.receive`
     '''
 
     for bytes_ in message.serialize():
@@ -322,20 +322,20 @@ def read_blocking(receiver, read_fun):
 
     Given a function to read a given amount of bytes from a result channel,
     this function handles the interaction with the parsing coroutine of a
-    message (as passed to `Client._process`).
+    message (as passed to :meth:`pyrakoon.client.AbstractClient._process`).
 
     :param receiver: Message result parser coroutine
-    :type receiver: *generator*
+    :type receiver: :obj:`generator`
     :param read_fun: Callable to read a given number of bytes from a result
         stream
     :type read_fun: `callable`
 
     :return: Message result
-    :rtype: `object`
+    :rtype: :obj:`object`
 
-    :raise TypeError: Coroutine didn't return a `Result`
+    :raise TypeError: Coroutine didn't return a :class:`~pyrakoon.protocol.Result`
 
-    :see: `pyrakoon.protocol.Message.receive`
+    :see: :meth:`pyrakoon.protocol.Message.receive`
     '''
 
     from pyrakoon import protocol

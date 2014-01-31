@@ -6,15 +6,34 @@
 Welcome to Pyrakoon's documentation!
 ====================================
 
-Contents:
-
+Usage
+-----
 .. toctree::
-   :maxdepth: 2
+   basics
+   tx
 
+API
+---
+.. autosummary::
+   :toctree: api
 
+   pyrakoon
+   pyrakoon.client
+   pyrakoon.client.admin
+   pyrakoon.errors
+   pyrakoon.sequence
+   pyrakoon.tx
+   pyrakoon.test
+   pyrakoon.utils
+   pyrakoon.protocol
+   pyrakoon.protocol.admin
+   pyrakoon.client.utils
+
+.. _Arakoon: http://arakoon.org
+.. _Twisted: http://www.twistedmatrix.com
 
 Indices and tables
-==================
+------------------
 
 * :ref:`genindex`
 * :ref:`modindex`
