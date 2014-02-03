@@ -23,7 +23,7 @@
 
 import functools
 
-from pyrakoon import utils
+from pyrakoon import protocol, utils
 
 def validate_types(specs, args):
     '''Validate method call argument types
@@ -51,6 +51,10 @@ def validate_types(specs, args):
 def call(message_type):
     '''Expose a `pyrakoon.protocol.Message` as a method on a client
 
+    :note: If the client method has an `allow_dirty` option (i.e.
+        `protocol.ALLOW_DIRTY_ARG` is present in the `ARGS` field of
+        `message_type`), this is automatically moved to the back.
+
     :param message_type: Type of the message this method should call
     :type message_type: `type`
 
@@ -62,15 +66,25 @@ def call(message_type):
     def wrapper(fun):
         '''Decorator helper'''
 
+        has_allow_dirty = False
+
         # Calculate argspec of final method
         argspec = ['self']
         for arg in message_type.ARGS:
+            if arg is protocol.ALLOW_DIRTY_ARG:
+                has_allow_dirty = True
+                continue
+
             if len(arg) == 2:
                 argspec.append(arg[0])
             elif len(arg) == 3:
                 argspec.append((arg[0], arg[2]))
             else:
                 raise ValueError
+
+        if has_allow_dirty:
+            name, _, default = protocol.ALLOW_DIRTY_ARG
+            argspec.append((name, default))
 
         @utils.update_argspec(*argspec) #pylint: disable-msg=W0142
         @functools.wraps(fun)
