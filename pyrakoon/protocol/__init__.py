@@ -432,6 +432,54 @@ class List(Type):
 
         yield Result(values)
 
+class Array(Type):
+    '''Array type'''
+
+    def __init__(self, inner_type):
+        super(Array, self).__init__()
+
+        self._inner_type = inner_type
+
+    def check(self, value):
+        raise NotImplementedError('Arrays can\'t be checked')
+
+    def serialize(self, value):
+        raise NotImplementedError('Arrays can\'t be serialized')
+
+    def receive(self):
+        count_receiver = UINT32.receive()
+        request = count_receiver.next() #pylint: disable-msg=E1101
+
+        while isinstance(request, Request):
+            value = yield request
+            request = count_receiver.send(value) #pylint: disable-msg=E1101
+
+        if not isinstance(request, Result):
+            raise TypeError
+
+        count = request.value
+
+        values = [None] * count
+        for idx in xrange(0, count):
+            receiver = self._inner_type.receive()
+            request = receiver.next() #pylint: disable-msg=E1101
+
+            while isinstance(request, Request):
+                value = yield request
+                request = receiver.send(value) #pylint: disable-msg=E1101
+
+            if not isinstance(request, Result):
+                raise TypeError
+
+            value = request.value
+
+            # Note: can't 'yield' value, otherwise we might not read all values
+            # from the stream, and leave it in an unclean state
+            values[idx] = value
+
+        yield Result(values)
+
+
 
 class Product(Type):
     '''Product type'''
@@ -1142,6 +1190,30 @@ class MultiGet(Message):
 
     keys = property(operator.attrgetter('_keys'))
 
+class MultiGetOption(Message):
+    __slots__ =('_keys')
+    TAG = 0x0031 | Message.MASK
+    ARGS = ('keys', List(STRING)),
+    RETURN_TYPE = Array(Option(STRING))
+    HAS_ALLOW_DIRTY = True
+
+    DOC = utils.format_doc('''
+         Send a "multi_get_option" command to the server
+
+         This method returns a list of value options for all requested keys.
+
+         :param keys: Keys to look up
+         :type keys: iterable of `str`
+
+         :return: Requested values
+         :rtype: iterable of `str option`
+    ''')
+
+    def __init__(self, keys):
+        super(MultiGetOption, self).__init__()
+        self._keys = keys
+
+    keys  = property(operator.attrgetter('_keys'))
 
 class ExpectProgressPossible(Message):
     '''"expect_progress_possible" message'''
@@ -1444,6 +1516,38 @@ class Nop(Message):
         This enforces consensus throughout a cluster, but has no further
         effects.
     ''')
+
+class Replace(Message):
+    '''"nop" message'''
+    __slots__ = ()
+    TAG = 0x0033 | Message.MASK
+    ARGS = ('key', STRING), ('wanted', Option(STRING)),
+    RETURN_TYPE = Option(STRING)
+
+    DOC = utils.format_doc('''
+         set the current binding for 'key' to 'wanted' and replaces the previous binding (if any)
+    ''')
+
+    def __init__(self, key, wanted):
+        super(Replace,self).__init__()
+        self._key = key
+        self._wanted = wanted
+
+    key = property(operator.attrgetter('_key'))
+    wanted = property(operator.attrgetter('_wanted'))
+
+class GetCurrentState(Message):
+    __slots__ = ()
+
+    TAG = 0x0032 | Message.MASK
+    ARGS = ()
+    RETURN_TYPE = STRING
+    
+    DOC = utils.format_doc(''' current state for a node''')
+
+    def __init__(self):
+        super(GetCurrentState,self).__init__()
+
 
 
 def build_prologue(cluster):

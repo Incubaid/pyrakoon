@@ -101,6 +101,16 @@ class Assert(Step):
     key = property(operator.attrgetter('_key'))
     value = property(operator.attrgetter('_value'))
 
+class AssertExists(Step):
+    '''"AssertExists" operation'''
+    TAG = 15
+    ARGS = ('key', protocol.STRING),
+
+    def __init__(self,key):
+        super(AssertExists,self).__init__(key)
+        self._key = key
+    
+    key = property(operator.attrgetter('_key'))
 
 class Sequence(Step):
     '''"Sequence" operation
