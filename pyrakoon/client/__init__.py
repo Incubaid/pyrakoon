@@ -84,7 +84,7 @@ class ClientMixin: #pylint: disable-msg=W0232,R0904
 
     @call(protocol.MultiGetOption)
     def multi_get_option(self): #pylint: disable-msg=R0201
-        assertFalse
+        assert False
 
     @call(protocol.ExpectProgressPossible)
     def expect_progress_possible(self): #pylint: disable-msg=R0201
@@ -132,10 +132,6 @@ class ClientMixin: #pylint: disable-msg=W0232,R0904
 
     @call(protocol.Nop)
     def nop(self): #pylint: disable-msg=R0201
-        assert False
-
-    @call(protocol.Replace)
-    def replace(self): #pylint: disable-msg=R0201
         assert False
 
     @call(protocol.GetCurrentState)

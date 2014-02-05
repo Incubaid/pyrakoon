@@ -487,7 +487,6 @@ class Array(Type):
         yield Result(values)
 
 
-
 class Product(Type):
     '''Product type'''
 
@@ -1213,30 +1212,39 @@ class MultiGet(Message):
     allow_dirty = property(operator.attrgetter('_allow_dirty'))
     keys = property(operator.attrgetter('_keys'))
 
+
 class MultiGetOption(Message):
-    __slots__ =('_keys')
+    '''"multi_get_option" message'''
+
+    __slots__ = '_allow_dirty', '_keys',
+
     TAG = 0x0031 | Message.MASK
-    ARGS = ('keys', List(STRING)),
+    ARGS = ALLOW_DIRTY_ARG, ('keys', List(STRING)),
     RETURN_TYPE = Array(Option(STRING))
-    HAS_ALLOW_DIRTY = True
 
     DOC = utils.format_doc('''
-         Send a "multi_get_option" command to the server
+        Send a "multi_get_option" command to the server
 
-         This method returns a list of value options for all requested keys.
+        This method returns a list of value options for all requested keys.
 
-         :param keys: Keys to look up
-         :type keys: iterable of `str`
+        :param keys: Keys to look up
+        :type keys: iterable of `str`
+        :param allow_dirty: Allow reads from slave nodes
+        :type allow_dirty: `bool`
 
-         :return: Requested values
-         :rtype: iterable of `str option`
+        :return: Requested values
+        :rtype: iterable of (`str` or `None`)
     ''')
 
-    def __init__(self, keys):
+    def __init__(self, allow_dirty, keys):
         super(MultiGetOption, self).__init__()
+
+        self._allow_dirty = allow_dirty
         self._keys = keys
 
-    keys  = property(operator.attrgetter('_keys'))
+    allow_dirty = property(operator.attrgetter('_allow_dirty'))
+    keys = property(operator.attrgetter('_keys'))
+
 
 class ExpectProgressPossible(Message):
     '''"expect_progress_possible" message'''
@@ -1584,37 +1592,25 @@ class Nop(Message):
         effects.
     ''')
 
-class Replace(Message):
-    '''"nop" message'''
-    __slots__ = ()
-    TAG = 0x0033 | Message.MASK
-    ARGS = ('key', STRING), ('wanted', Option(STRING)),
-    RETURN_TYPE = Option(STRING)
-
-    DOC = utils.format_doc('''
-         set the current binding for 'key' to 'wanted' and replaces the previous binding (if any)
-    ''')
-
-    def __init__(self, key, wanted):
-        super(Replace,self).__init__()
-        self._key = key
-        self._wanted = wanted
-
-    key = property(operator.attrgetter('_key'))
-    wanted = property(operator.attrgetter('_wanted'))
 
 class GetCurrentState(Message):
+    '''"get_current_state" message'''
+
     __slots__ = ()
 
     TAG = 0x0032 | Message.MASK
     ARGS = ()
     RETURN_TYPE = STRING
-    
-    DOC = utils.format_doc(''' current state for a node''')
 
-    def __init__(self):
-        super(GetCurrentState,self).__init__()
+    DOC = utils.format_doc('''
+        Send a "get_current_state" command to the server
 
+        This call returns a string representing the current state of the node,
+        and can be used for troubleshooting purposes.
+
+        :return: State of the server
+        :rtype: `str`
+    ''')
 
 
 def sanity_check():
