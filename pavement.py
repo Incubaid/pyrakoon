@@ -76,6 +76,11 @@ options(
         test_suite = 'nose.collector',
     ),
 
+    sphinx=Bunch(
+        docroot='doc',
+        builddir='_build',
+    ),
+
     minilib=Bunch(
         extra_files=['doctools', ],
     ),
@@ -88,6 +93,16 @@ def sdist():
     '''Build source package'''
     pass
 
+
+
+@task
+@needs('paver.doctools.html')
+def sphinx():
+    '''Build and move the Sphinx documentation'''
+    builtdocs = path(options.sphinx.docroot) / options.sphinx.builddir / 'html'
+    destdir = path('dist') / 'doc'
+    destdir.rmtree()
+    builtdocs.move(destdir)
 
 @task
 def epydoc():
@@ -113,9 +128,8 @@ def epydoc():
 
     cli.main(options, ('pyrakoon', ))
 
-
 @task
-@needs('epydoc')
+@needs('sphinx', 'epydoc')
 def doc():
     '''Build all documentation'''
     pass
