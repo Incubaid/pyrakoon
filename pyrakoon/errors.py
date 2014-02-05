@@ -84,6 +84,11 @@ class NotSupported(ArakoonError):
 
     CODE = 0x0020
 
+class NoLongerMaster(ArakoonError):
+    '''No longer master'''
+
+    CODE = 0x0021
+
 class UnknownFailure(ArakoonError):
     '''Unknown failure'''
 
