@@ -103,14 +103,17 @@ class Assert(Step):
 
 class AssertExists(Step):
     '''"AssertExists" operation'''
+
     TAG = 15
     ARGS = ('key', protocol.STRING),
 
-    def __init__(self,key):
-        super(AssertExists,self).__init__(key)
+    def __init__(self, key):
+        super(AssertExists, self).__init__(key)
+
         self._key = key
-    
+
     key = property(operator.attrgetter('_key'))
+
 
 class Sequence(Step):
     '''"Sequence" operation

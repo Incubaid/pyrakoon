@@ -145,7 +145,7 @@ class TestTwistedClient(unittest.TestCase):
         '''Test a failing 'get' call'''
 
         expected = protocol.build_prologue(self.CLUSTER_ID)
-        expected += ''.join(protocol.Get('key').serialize())
+        expected += ''.join(protocol.Get(False, 'key').serialize())
         to_send = ''.join(chr(i) for i in itertools.chain(
             (errors.NotFound.CODE, 0, 0, 0),
             (3, 0, 0, 0),

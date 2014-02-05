@@ -22,6 +22,7 @@
 '''Arakoon protocol implementation'''
 
 import struct
+import inspect
 import operator
 import itertools
 
@@ -49,6 +50,9 @@ class Request(object): #pylint: disable-msg=R0903
     def __init__(self, count):
         self._count = count
 
+    def __repr__(self):
+        return 'Request(%d)' % self.count
+
     count = property(operator.attrgetter('_count'))
 
 class Result(object): #pylint: disable-msg=R0903
@@ -58,6 +62,9 @@ class Result(object): #pylint: disable-msg=R0903
 
     def __init__(self, value):
         self._value = value
+
+    def __repr__(self):
+        return 'Result(%r)' % self.value
 
     value = property(operator.attrgetter('_value'))
 
@@ -640,6 +647,9 @@ STATISTICS = StatisticsType()
 
 # Protocol message definitions
 
+ALLOW_DIRTY_ARG = ('allow_dirty', BOOL, False)
+'''Well-known `allow_dirty` argument'''
+
 class Message(object):
     '''Base type for Arakoon command messages'''
 
@@ -654,8 +664,6 @@ class Message(object):
     '''Return type of the command''' #pylint: disable-msg=W0105
     DOC = None
     '''Docstring for methods exposing this command''' #pylint: disable-msg=W0105
-    HAS_ALLOW_DIRTY = False
-    '''Marker whether the command has an 'allow dirty' flag''' #pylint: disable-msg=W0105, C0301
 
     _tag_bytes = None
     '''Serialized representation of `_TAG`''' #pylint: disable-msg=W0105
@@ -671,11 +679,6 @@ class Message(object):
             self._tag_bytes = ''.join(UINT32.serialize(self.TAG))
 
         yield self._tag_bytes
-
-        # TODO: Hack -> never allow dirty reads, for now
-        if self.HAS_ALLOW_DIRTY:
-            for bytes_ in BOOL.serialize(False):
-                yield bytes_
 
         for arg in self.ARGS:
             if len(arg) == 2:
@@ -807,12 +810,11 @@ class WhoMaster(Message):
 class Exists(Message):
     '''"exists" message'''
 
-    __slots__ = '_key',
+    __slots__ = '_allow_dirty', '_key',
 
     TAG = 0x0007 | Message.MASK
-    ARGS = ('key', STRING),
+    ARGS = ALLOW_DIRTY_ARG, ('key', STRING),
     RETURN_TYPE = BOOL
-    HAS_ALLOW_DIRTY = True
 
     DOC = utils.format_doc('''
         Send an "exists" command to the server
@@ -822,28 +824,31 @@ class Exists(Message):
 
         :param key: Key to test
         :type key: `str`
+        :param allow_dirty: Allow reads from slave nodes
+        :type allow_dirty: `bool`
 
         :return: Whether the given key is set on the server
         :rtype: `bool`
     ''')
 
-    def __init__(self, key):
+    def __init__(self, allow_dirty, key):
         super(Exists, self).__init__()
 
+        self._allow_dirty = allow_dirty
         self._key = key
 
     key = property(operator.attrgetter('_key'))
+    allow_dirty = property(operator.attrgetter('_allow_dirty'))
 
 
 class Get(Message):
     '''"get" message'''
 
-    __slots__ = '_key',
+    __slots__ = '_allow_dirty', '_key',
 
     TAG = 0x0008 | Message.MASK
-    ARGS = ('key', STRING),
+    ARGS = ALLOW_DIRTY_ARG, ('key', STRING),
     RETURN_TYPE = STRING
-    HAS_ALLOW_DIRTY = True
 
     DOC = utils.format_doc('''
         Send a "get" command to the server
@@ -852,16 +857,20 @@ class Get(Message):
 
         :param key: Key to retrieve
         :type key: `str`
+        :param allow_dirty: Allow reads from slave nodes
+        :type allow_dirty: `bool`
 
         :return: Value for the given key
         :rtype: `str`
     ''')
 
-    def __init__(self, key):
+    def __init__(self, allow_dirty, key):
         super(Get, self).__init__()
 
+        self._allow_dirty = allow_dirty
         self._key = key
 
+    allow_dirty = property(operator.attrgetter('_allow_dirty'))
     key = property(operator.attrgetter('_key'))
 
 
@@ -924,12 +933,11 @@ class Delete(Message):
 class PrefixKeys(Message):
     '''"prefix_keys" message'''
 
-    __slots__ = '_prefix', '_max_elements',
+    __slots__ = '_allow_dirty', '_prefix', '_max_elements',
 
     TAG = 0x000c | Message.MASK
-    ARGS = ('prefix', STRING), ('max_elements', INT32, -1),
+    ARGS = ALLOW_DIRTY_ARG, ('prefix', STRING), ('max_elements', INT32, -1),
     RETURN_TYPE = List(STRING)
-    HAS_ALLOW_DIRTY = True
 
     DOC = utils.format_doc('''
         Send a "prefix_keys" command to the server
@@ -942,17 +950,21 @@ class PrefixKeys(Message):
         :type prefix: `str`
         :param max_elements: Maximum number of keys to return
         :type max_elements: `int`
+        :param allow_dirty: Allow reads from slave nodes
+        :type allow_dirty: `bool`
 
         :return: Keys matching the given prefix
         :rtype: iterable of `str`
     ''')
 
-    def __init__(self, prefix, max_elements):
+    def __init__(self, allow_dirty, prefix, max_elements):
         super(PrefixKeys, self).__init__()
 
+        self._allow_dirty = allow_dirty
         self._prefix = prefix
         self._max_elements = max_elements
 
+    allow_dirty = property(operator.attrgetter('_allow_dirty'))
     prefix = property(operator.attrgetter('_prefix'))
     max_elements = property(operator.attrgetter('_max_elements'))
 
@@ -1054,15 +1066,15 @@ class Sequence(Message):
 class Range(Message):
     '''"Range" message'''
 
-    __slots__ = '_begin_key', '_begin_inclusive', '_end_key', \
+    __slots__ = '_allow_dirty', '_begin_key', '_begin_inclusive', '_end_key', \
         '_end_inclusive', '_max_elements',
 
     TAG = 0x000b | Message.MASK
-    ARGS = ('begin_key', Option(STRING)), ('begin_inclusive', BOOL), \
+    ARGS = ALLOW_DIRTY_ARG, \
+        ('begin_key', Option(STRING)), ('begin_inclusive', BOOL), \
         ('end_key', Option(STRING)), ('end_inclusive', BOOL), \
         ('max_elements', INT32, -1),
     RETURN_TYPE = List(STRING)
-    HAS_ALLOW_DIRTY = True
 
     DOC = utils.format_doc('''
         Send a "range" command to the server
@@ -1083,22 +1095,26 @@ class Range(Message):
         :param end_inclusive: `end_key` is in- or exclusive
         :param max_elements: Maximum number of keys to return
         :type max_elements: `int`
+        :param allow_dirty: Allow reads from slave nodes
+        :type allow_dirty: `bool`
 
         :return: List of matching keys
         :rtype: iterable of `str`
     ''')
 
     #pylint: disable-msg=R0913
-    def __init__(self, begin_key, begin_inclusive, end_key, end_inclusive,
-        max_elements):
+    def __init__(self, allow_dirty, begin_key, begin_inclusive,
+        end_key, end_inclusive, max_elements):
         super(Range, self).__init__()
 
+        self._allow_dirty = allow_dirty
         self._begin_key = begin_key
         self._begin_inclusive = begin_inclusive
         self._end_key = end_key
         self._end_inclusive = end_inclusive
         self._max_elements = max_elements
 
+    allow_dirty = property(operator.attrgetter('_allow_dirty'))
     begin_key = property(operator.attrgetter('_begin_key'))
     begin_inclusive = property(operator.attrgetter('_begin_inclusive'))
     end_key = property(operator.attrgetter('_end_key'))
@@ -1109,15 +1125,15 @@ class Range(Message):
 class RangeEntries(Message):
     '''"RangeEntries" message'''
 
-    __slots__ = '_begin_key', '_begin_inclusive', '_end_key', \
+    __slots__ = '_allow_dirty', '_begin_key', '_begin_inclusive', '_end_key', \
         '_end_inclusive', '_max_elements',
 
     TAG = 0x000f | Message.MASK
-    ARGS = ('begin_key', Option(STRING)), ('begin_inclusive', BOOL), \
+    ARGS = ALLOW_DIRTY_ARG, \
+        ('begin_key', Option(STRING)), ('begin_inclusive', BOOL), \
         ('end_key', Option(STRING)), ('end_inclusive', BOOL), \
         ('max_elements', INT32, -1),
     RETURN_TYPE = List(Product(STRING, STRING))
-    HAS_ALLOW_DIRTY = True
 
     DOC = utils.format_doc('''
         Send a "range_entries" command to the server
@@ -1138,22 +1154,26 @@ class RangeEntries(Message):
         :param end_inclusive: `end_key` is in- or exclusive
         :param max_elements: Maximum number of items to return
         :type max_elements: `int`
+        :param allow_dirty: Allow reads from slave nodes
+        :type allow_dirty: `bool`
 
         :return: List of matching (key, value) pairs
         :rtype: iterable of (`str`, `str`)
     ''')
 
     #pylint: disable-msg=R0913
-    def __init__(self, begin_key, begin_inclusive, end_key, end_inclusive,
-        max_elements):
+    def __init__(self, allow_dirty, begin_key, begin_inclusive,
+        end_key, end_inclusive, max_elements):
         super(RangeEntries, self).__init__()
 
+        self._allow_dirty = allow_dirty
         self._begin_key = begin_key
         self._begin_inclusive = begin_inclusive
         self._end_key = end_key
         self._end_inclusive = end_inclusive
         self._max_elements = max_elements
 
+    allow_dirty = property(operator.attrgetter('_allow_dirty'))
     begin_key = property(operator.attrgetter('_begin_key'))
     begin_inclusive = property(operator.attrgetter('_begin_inclusive'))
     end_key = property(operator.attrgetter('_end_key'))
@@ -1164,12 +1184,11 @@ class RangeEntries(Message):
 class MultiGet(Message):
     '''"multi_get" message'''
 
-    __slots__ = '_keys',
+    __slots__ = '_allow_dirty', '_keys',
 
     TAG = 0x0011 | Message.MASK
-    ARGS = ('keys', List(STRING)),
+    ARGS = ALLOW_DIRTY_ARG, ('keys', List(STRING)),
     RETURN_TYPE = List(STRING)
-    HAS_ALLOW_DIRTY = True
 
     DOC = utils.format_doc('''
         Send a "multi_get" command to the server
@@ -1178,16 +1197,20 @@ class MultiGet(Message):
 
         :param keys: Keys to look up
         :type keys: iterable of `str`
+        :param allow_dirty: Allow reads from slave nodes
+        :type allow_dirty: `bool`
 
         :return: Requested values
         :rtype: iterable of `str`
     ''')
 
-    def __init__(self, keys):
+    def __init__(self, allow_dirty, keys):
         super(MultiGet, self).__init__()
 
+        self._allow_dirty = allow_dirty
         self._keys = keys
 
+    allow_dirty = property(operator.attrgetter('_allow_dirty'))
     keys = property(operator.attrgetter('_keys'))
 
 class MultiGetOption(Message):
@@ -1321,12 +1344,11 @@ class Confirm(Message):
 class Assert(Message):
     '''"assert" message'''
 
-    __slots__ = '_key', '_value',
+    __slots__ = '_allow_dirty', '_key', '_value',
 
     TAG = 0x0016 | Message.MASK
-    ARGS = ('key', STRING), ('value', Option(STRING)),
+    ARGS = ALLOW_DIRTY_ARG, ('key', STRING), ('value', Option(STRING)),
     RETURN_TYPE = UNIT
-    HAS_ALLOW_DIRTY = True
 
     DOC = utils.format_doc('''
         Send an "assert" command to the server
@@ -1338,14 +1360,18 @@ class Assert(Message):
         :type key: `str`
         :param value: Optional value to compare
         :type value: `str` or `None`
+        :param allow_dirty: Allow reads from slave nodes
+        :type allow_dirty: `bool`
     ''')
 
-    def __init__(self, key, value):
+    def __init__(self, allow_dirty, key, value):
         super(Assert, self).__init__()
 
+        self._allow_dirty = allow_dirty
         self._key = key
         self._value = value
 
+    allow_dirty = property(operator.attrgetter('_allow_dirty'))
     key = property(operator.attrgetter('_key'))
     value = property(operator.attrgetter('_value'))
 
@@ -1353,12 +1379,11 @@ class Assert(Message):
 class AssertExists(Message):
     '''"assert_exists" message'''
 
-    __slots__ = '_key',
+    __slots__ = '_allow_dirty', '_key',
 
     TAG = 0x0029 | Message.MASK
-    ARGS = ('key', STRING),
+    ARGS = ALLOW_DIRTY_ARG, ('key', STRING),
     RETURN_TYPE = UNIT
-    HAS_ALLOW_DIRTY = True
 
     DOC = utils.format_doc('''
         Send an "assert_exists" command to the server
@@ -1368,28 +1393,32 @@ class AssertExists(Message):
 
         :param key: Key to check
         :type key: `str`
+        :param allow_dirty: Allow reads from slave nodes
+        :type allow_dirty: `bool`
     ''')
 
-    def __init__(self, key):
+    def __init__(self, allow_dirty, key):
         super(AssertExists, self).__init__()
 
+        self._allow_dirty = allow_dirty
         self._key = key
 
+    allow_dirty = property(operator.attrgetter('_allow_dirty'))
     key = property(operator.attrgetter('_key'))
 
 
 class RevRangeEntries(Message):
     '''"rev_range_entries" message'''
 
-    __slots__ = '_begin_key', '_begin_inclusive', '_end_key', \
+    __slots__ = '_allow_dirty', '_begin_key', '_begin_inclusive', '_end_key', \
         '_end_inclusive', '_max_elements',
 
     TAG = 0x0023 | Message.MASK
-    ARGS = ('begin_key', Option(STRING)), ('begin_inclusive', BOOL), \
+    ARGS = ALLOW_DIRTY_ARG, \
+        ('begin_key', Option(STRING)), ('begin_inclusive', BOOL), \
         ('end_key', Option(STRING)), ('end_inclusive', BOOL), \
         ('max_elements', INT32, -1),
     RETURN_TYPE = List(Product(STRING, STRING))
-    HAS_ALLOW_DIRTY = True
 
     DOC = utils.format_doc('''
         Send a "rev_range_entries" command to the server
@@ -1411,22 +1440,26 @@ class RevRangeEntries(Message):
         :param end_inclusive: `end_key` is in- or exclusive
         :param max_elements: Maximum number of items to return
         :type max_elements: `int`
+        :param allow_dirty: Allow reads from slave nodes
+        :type allow_dirty: `bool`
 
         :return: List of matching (key, value) pairs
         :rtype: iterable of (`str`, `str`)
     ''')
 
     #pylint: disable-msg=R0913
-    def __init__(self, begin_key, begin_inclusive, end_key, end_inclusive,
-        max_elements):
+    def __init__(self, allow_dirty, begin_key, begin_inclusive,
+        end_key, end_inclusive, max_elements):
         super(RevRangeEntries, self).__init__()
 
+        self._allow_dirty = allow_dirty
         self._begin_key = begin_key
         self._begin_inclusive = begin_inclusive
         self._end_key = end_key
         self._end_inclusive = end_inclusive
         self._max_elements = max_elements
 
+    allow_dirty = property(operator.attrgetter('_allow_dirty'))
     begin_key = property(operator.attrgetter('_begin_key'))
     begin_inclusive = property(operator.attrgetter('_begin_inclusive'))
     end_key = property(operator.attrgetter('_end_key'))
@@ -1501,6 +1534,40 @@ class DeletePrefix(Message):
     prefix = property(operator.attrgetter('_prefix'))
 
 
+class Replace(Message):
+    '''"replace" message'''
+
+    __slots__ = '_key', '_value',
+
+    TAG = 0x0033 | Message.MASK
+    ARGS = ('key', STRING), ('value', Option(STRING)),
+    RETURN_TYPE = Option(STRING)
+
+    DOC = utils.format_doc('''
+        Send a "replace" command to the server
+
+        `replace key value` will replace the value bound to the given key with
+        the provided value, and return the old value bound to the key.
+        If `value` is `None`, the key is deleted.
+        If the key was not present in the database, `None` is returned.
+
+        :param key: Key to replace
+        :type key: `str`
+        :param value: Value to set
+        :type value: `str` or `None`
+
+        :return: Original value bound to the key
+        :rtype: `str` or `None`
+    ''')
+
+    def __init__(self, key, value):
+        self._key = key
+        self._value = value
+
+    key = property(operator.attrgetter('_key'))
+    value = property(operator.attrgetter('_value'))
+
+
 class Nop(Message):
     '''"nop" message'''
 
@@ -1548,6 +1615,29 @@ class GetCurrentState(Message):
     def __init__(self):
         super(GetCurrentState,self).__init__()
 
+
+
+def sanity_check():
+    '''Sanity check for some invariants on types defined in this module'''
+
+    for (name, value) in globals().iteritems():
+        if inspect.isclass(value) \
+            and getattr(value, '__module__', None) == __name__:
+
+            # A `Message` which has `ALLOW_DIRTY_ARG` in its `ARGS` must have
+            # an `allow_dirty` attribute, the constructor must take such
+            # argument, and if `__slots__` is defined, there should be an
+            # `_allow_dirty` field
+            if issubclass(value, Message):
+                if ALLOW_DIRTY_ARG in (value.ARGS or []):
+                    assert hasattr(value, 'allow_dirty')
+                    argspec = inspect.getargspec(value.__init__)
+                    assert 'allow_dirty' in argspec.args
+                    if hasattr(value, '__slots__'):
+                        assert '_allow_dirty' in value.__slots__
+
+sanity_check()
+del sanity_check
 
 
 def build_prologue(cluster):

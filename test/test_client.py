@@ -98,6 +98,8 @@ class TestClient(unittest.TestCase):
 
         client_ = self.Client()
 
+        self.assertRaises(client.NotConnectedError, client_.hello, 'testsuite',
+            'pyrakoon_test')
         self.assertRaises(RuntimeError, client_.hello, 'testsuite',
             'pyrakoon_test')
 

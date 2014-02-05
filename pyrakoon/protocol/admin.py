@@ -1,6 +1,6 @@
 # This file is part of Pyrakoon, a distributed key-value store client.
 #
-# Copyright (C) 2013 Incubaid BVBA
+# Copyright (C) 2013, 2014 Incubaid BVBA
 #
 # Licensees holding a valid Incubaid license may use this file in
 # accordance with Incubaid's Arakoon commercial license agreement. For
@@ -21,7 +21,9 @@
 
 '''Arakoon administrative call implementations'''
 
-from pyrakoon import protocol, utils
+import operator
+
+from pyrakoon import errors, protocol, utils
 
 class OptimizeDB(protocol.Message):
     '''"optimize_db" message'''
@@ -79,3 +81,97 @@ class DropMaster(protocol.Message):
 
         :note: This doesn't work in a single-node environment
     ''')
+
+
+class CollapseTlogs(protocol.Message):
+    '''"collapse_tlogs" message'''
+
+    __slots__ = '_count',
+
+    TAG = 0x0014 | protocol.Message.MASK
+    ARGS = ('count', protocol.INT32),
+    RETURN_TYPE = None # Hack to work around irregular return type
+
+    DOC = utils.format_doc('''
+        Send a "collapse_tlogs" command to the server
+
+        This method instructs a node to collapse its *TLOG* collection by
+        constructing a *head* database and removing superfluous *TLOG* files.
+
+        The number of *TLOG* files to keep should be passed as a parameter.
+
+        :param count: Number of *TLOG* files to keep
+        :type count: `int`
+        :return: For every *TLOG*, the time it took to collapse it
+        :rtype: `[int]`
+    ''')
+
+    def __init__(self, count):
+        self._count = count
+
+    count = property(operator.attrgetter('_count'))
+
+    def receive(self): #pylint: disable-msg=R0912
+        self.RETURN_TYPE = protocol.INT32
+
+        count_receiver = protocol.Message.receive(self)
+        request = count_receiver.next()
+
+        while isinstance(request, protocol.Request):
+            value = yield request
+            request = count_receiver.send(value)
+
+        if not isinstance(request, protocol.Result):
+            raise TypeError
+
+        count = request.value
+
+        result = [None] * count
+
+        for idx in xrange(count):
+            success_receiver = protocol.INT32.receive()
+            request = success_receiver.next()
+
+            while isinstance(request, protocol.Request):
+                value = yield request
+                request = success_receiver.send(value)
+
+            if not isinstance(request, protocol.Result):
+                raise TypeError
+
+            success = request.value
+
+            if success == 0:
+                time_receiver = protocol.INT64.receive()
+                request = time_receiver.next()
+
+                while isinstance(request, protocol.Request):
+                    value = yield request
+                    request = time_receiver.send(value)
+
+                if not isinstance(request, protocol.Result):
+                    raise TypeError
+
+                time = request.value
+                result[idx] = time
+            else:
+                message_receiver = protocol.STRING.receive()
+                request = message_receiver.next()
+
+                while isinstance(request, protocol.Request):
+                    value = yield request
+                    request = message_receiver.send(value)
+
+                if not isinstance(request, protocol.Result):
+                    raise TypeError
+
+                message = request.value
+
+                if success in errors.ERROR_MAP:
+                    raise errors.ERROR_MAP[success](message)
+                else:
+                    raise errors.ArakoonError(
+                        'Unknown error code 0x%x, server said: %s' % \
+                            (success, message))
+
+        yield protocol.Result(result)

@@ -126,6 +126,10 @@ class ClientMixin: #pylint: disable-msg=W0232,R0904
     def delete_prefix(self): #pylint: disable-msg=R0201
         assert False
 
+    @call(protocol.Replace)
+    def replace(self): #pylint: disable-msg=R0201
+        assert False
+
     @call(protocol.Nop)
     def nop(self): #pylint: disable-msg=R0201
         assert False
@@ -142,6 +146,10 @@ class ClientMixin: #pylint: disable-msg=W0232,R0904
     __setitem__ = set
     __delitem__ = delete
     __contains__ = exists
+
+
+class NotConnectedError(RuntimeError):
+    '''Error used when a call on a not-connected client is made'''
 
 
 class AbstractClient: #pylint: disable-msg=W0232,R0903,R0922
