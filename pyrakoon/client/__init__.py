@@ -28,9 +28,9 @@ from pyrakoon.client.utils import call
 class ClientMixin: #pylint: disable-msg=W0232,R0904
     '''Mixin providing client actions for standard cluster functionality
 
-    This can be mixed into any class implementing `AbstractClient`.
+    This can be mixed into any class implementing :class:`AbstractClient`.
 
-    :see: `AbstractClient`
+    :see: :class:`AbstractClient`
     '''
 
     #pylint: disable-msg=C0111
@@ -164,14 +164,14 @@ class AbstractClient: #pylint: disable-msg=W0232,R0903,R0922
         should be rethrown if caught.
 
         :param message: Message to handle
-        :type message: `pyrakoon.protocol.Message`
+        :type message: :class:`pyrakoon.protocol.Message`
 
         :return: Server result value
-        :rtype: `object`
+        :rtype: :obj:`object`
 
-        :see: `pyrakoon.protocol.Message.serialize`
-        :see: `pyrakoon.protocol.Message.receive`
-        :see: `pyrakoon.utils.process_blocking`
+        :see: :meth:`pyrakoon.protocol.Message.serialize`
+        :see: :meth:`pyrakoon.protocol.Message.receive`
+        :see: :func:`pyrakoon.utils.process_blocking`
         '''
 
         raise NotImplementedError

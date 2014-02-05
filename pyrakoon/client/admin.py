@@ -28,9 +28,7 @@ class ClientMixin: #pylint: disable-msg=W0232
     '''Mixin providing client actions for node administration
 
     This can be mixed into any class implementing
-    `pyrakoon.client.AbstractClient`.
-
-    :see: `pyrakoon.client.AbstractClient`
+    :class:`pyrakoon.client.AbstractClient`.
     '''
 
     #pylint: disable-msg=C0111,R0201
