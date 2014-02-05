@@ -288,7 +288,7 @@ class ArakoonEnvironmentMixin:
         #pylint: enable-msg=E1101
 
         return (name, {
-            'arakoon_0': ('127.0.0.1', DEFAULT_CLIENT_PORT),
+            'arakoon_0': (['127.0.0.1'], DEFAULT_CLIENT_PORT),
         }), config_path, base
 
     def tearDownArakoon(self):
@@ -342,8 +342,8 @@ class NurseryEnvironmentMixin(ArakoonEnvironmentMixin):
             LOGGER.info('Attempting hello call')
             try:
                 client_ = compat.ArakoonClient(compat_client_config)
-                client_.hello('testsuite', compat_client_config.clusterId)
-                client_._dropConnections() #pylint: disable-msg=W0212
+                client_.hello('testsuite', compat_client_config.getClusterId())
+                client_.dropConnections() #pylint: disable-msg=W0212
             except: #pylint: disable-msg=W0702
                 LOGGER.exception('Call failed, sleeping')
             else:

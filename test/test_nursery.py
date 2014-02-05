@@ -62,7 +62,7 @@ class TestNurseryClient(unittest.TestCase, test.NurseryEnvironmentMixin):
 
     def _create_client(self):
         client = compat.ArakoonClient(self.client_config)
-        client.hello('testsuite', self.client_config.clusterId)
+        client.hello('testsuite', self.client_config.getClusterId())
         return client
 
     def _create_nursery_client(self):
@@ -70,7 +70,7 @@ class TestNurseryClient(unittest.TestCase, test.NurseryEnvironmentMixin):
             cluster_info2 = {}
 
             for node_id, (ips, port) in cluster_info.iteritems():
-                cluster_info2[node_id] = (ips[0], port)
+                cluster_info2[node_id] = (ips, port)
 
             return compat.ArakoonClient(
                 compat.ArakoonClientConfig(name, cluster_info2))
@@ -110,9 +110,9 @@ class TestNurseryClientTx(twisted.trial.unittest.TestCase,
             ArakoonClientProtocol, self.CLUSTER_ID)
 
         cluster_id, nodes = self.client_config
-        ip, port = nodes.values()[0]
+        ips, port = nodes.values()[0]
 
-        proto = yield client.connectTCP(ip, port)
+        proto = yield client.connectTCP(ips[0], port)
 
         try:
             yield proto.hello('test_nursery_client_tx', cluster_id)

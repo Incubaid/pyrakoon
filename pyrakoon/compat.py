@@ -256,6 +256,9 @@ class ArakoonClient(object):
         def convert_assert(step):
             return sequence.Assert(step._key, step._value)
 
+        def convert_assert_exists(step):
+            return sequence.AssertExists(step._key)
+
         def convert_sequence(sequence_):
             steps = []
 
@@ -266,6 +269,8 @@ class ArakoonClient(object):
                     steps.append(convert_delete(step))
                 elif isinstance(step, Assert):
                     steps.append(convert_assert(step))
+                elif isinstance(step, AssertExists):
+                    steps.append(convert_assert_exists(step))
                 elif isinstance(step, Sequence):
                     steps.append(convert_sequence(step))
                 else:
@@ -431,6 +436,20 @@ class ArakoonClient(object):
 
         return self._client.multi_get(keys)
 
+    @utils.update_argspec('self', 'keys')
+    @_convert_exceptions
+    @_validate_signature('string_list', )
+    def multiGetOption(self, keys):
+        """
+        Retrieve the values for the keys in the given list.
+
+        @type keys: string list
+        @rtype: string option list
+        @return: the values associated with the respective keys (None if no value corresponds)
+        """
+
+        return self._client.multi_get_option(keys)
+
     @utils.update_argspec('self')
     @_convert_exceptions
     def expectProgressPossible(self):
@@ -494,6 +513,11 @@ class ArakoonClient(object):
 
         self._client.assert_(key, vo)
 
+    @utils.update_argspec('self', 'key')
+    @_convert_exceptions
+    def aSSert_exists(self, key):
+        return self._client.assert_exists(key)
+
     @utils.update_argspec('self', 'beginKey', 'beginKeyIncluded', 'endKey',
         'endKeyIncluded', ('maxElements', -1))
     @_convert_exceptions
@@ -529,7 +553,7 @@ class ArakoonClient(object):
         return self._client.statistics()
 
 
-    @utils.update_argspec('self')
+    @utils.update_argspec('self', ('nodeId', None))
     @_convert_exceptions
     def getVersion(self, nodeId = None):
         """
@@ -548,8 +572,48 @@ class ArakoonClient(object):
 
         return self._client.version()
 
+    @utils.update_argspec('self')
+    @_convert_exceptions
+    def nop(self):
+        """
+        a nop is a paxos update that changes nothing to the database
+        """
 
-    def _dropConnections(self):
+        return self._client.nop()
+
+    @utils.update_argspec('self', 'nodeId')
+    @_convert_exceptions
+    def getCurrentState(self, nodeId):
+        return self._client.get_current_state() # TODO: not to master, but to node
+
+    @utils.update_argspec('self', 'key', 'wanted')
+    @_convert_exceptions
+    def replace(self, key, wanted):
+        """
+        assigns the wanted value to the key, and returns the previous assignment (if any) for that key.
+        If wanted is None, the binding is deleted.
+        @type key:string
+        @type wanted: string option
+        @rtype: string option
+        @return: the previous binding (if any)
+        """
+
+        return self._client.replace(key,wanted)
+
+    @utils.update_argspec('self','prefix')
+    @_convert_exceptions
+    def deletePrefix(self, prefix):
+        """
+        type prefix: string
+        """
+
+        return self._client.delete_prefix(prefix)
+
+
+    def makeSequence(self):
+        return Sequence()
+
+    def dropConnections(self):
         return self._client.drop_connections()
 
 
@@ -688,6 +752,10 @@ class Assert(Update):
         self._key = key
         self._value = value
 
+class AssertExists(Update):
+    def __init__(self, key):
+        self._key = key
+
 class Sequence(Update):
     def __init__(self):
         self._updates = []
@@ -708,6 +776,10 @@ class Sequence(Update):
     def addAssert(self, key, value):
         self._updates.append(Assert(key, value))
 
+    @utils.update_argspec('self', 'key')
+    @_validate_signature('string')
+    def addAssertExists(self, key):
+        self._updates.append(AssertExists(key))
 
 # ArakoonClientConfig
 # This is copied from the ArakoonProtocol module
@@ -726,11 +798,12 @@ class ArakoonClientConfig :
         This is a dictionary containing info on the arakoon server nodes. It contains:
 
           - nodeids as keys
-          - (hostname/ip, tcp port) tuples as value
+          - (ips, tcp port) tuples as value
         e.g. ::
-            cfg = ArakoonClientConfig ( { "myFirstNode" : ( "127.0.0.1", 4000 ),
-                    "mySecondNode" : ( "127.0.0.1", 5000 ) ,
-                    "myThirdNode"  : ( "127.0.0.1", 6000 ) } )
+            cfg = ArakoonClientConfig ( {
+                    "myFirstNode" : ( ["127.0.0.1"], 4000 ),
+                    "mySecondNode" : (["127.0.0.1", "192.168.0.1"], 5000 ) ,
+                    "myThirdNode"  : (["127.0.0.1"], 6000 ) } )
         Defaults to a single node running on localhost:4000
 
         @type clusterId: string
@@ -739,7 +812,7 @@ class ArakoonClientConfig :
         @param nodes: A dictionary containing the locations for the server nodes
 
         """
-        self.clusterId = clusterId
+        self._clusterId = clusterId
         self._nodes = nodes
 
     @staticmethod
@@ -767,7 +840,8 @@ class ArakoonClientConfig :
         @rtype: pair(string,int)
         @return: Returns a pair with the nodes hostname or ip and the tcp port, e.g. ("127.0.0.1", 4000)
         """
-        return self._nodes[ nodeId ]
+        ips, port = self._nodes[nodeId]
+        return (ips[0], port)
 
 
     def getTryCount (self):
@@ -818,6 +892,8 @@ class ArakoonClientConfig :
         """
         return ARA_CFG_CONN_BACKOFF
 
+    def getClusterId(self):
+        return self._clusterId
 
 # Actual client implementation
 class _ArakoonClient(object, client.AbstractClient, client.ClientMixin):
@@ -975,7 +1051,7 @@ class _ArakoonClient(object, client.AbstractClient, client.ClientMixin):
         if not connection:
             node_location = self._config.getNodeLocation(node_id)
             connection = _ClientConnection(node_location,
-                self._config.clusterId)
+                self._config.getClusterId())
             connection.connect()
 
             self._connections[node_id] = connection

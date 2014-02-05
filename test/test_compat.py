@@ -89,14 +89,14 @@ class TestCompatClient(unittest.TestCase, test.ArakoonEnvironmentMixin):
 
     def _create_client(self):
         client = compat.ArakoonClient(self.client_config)
-        client.hello('testsuite', self.client_config.clusterId)
+        client.hello('testsuite', self.client_config.getClusterId())
         return client
 
     def test_hello(self):
         '''Say hello to the Arakoon server'''
 
         response = self._create_client().hello(
-            'testsuite', self.client_config.clusterId)
+            'testsuite', self.client_config.getClusterId())
 
         self.assert_('Arakoon' in response)
 
