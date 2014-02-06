@@ -67,7 +67,7 @@ class TestSequenceSerialization(unittest.TestCase):
             (0, 0, 0, 0),
         ))
 
-        received = ''.join(sequence.Sequence().serialize())
+        received = ''.join(sequence.Sequence([]).serialize())
 
         self.assertEquals(expected, received)
 
@@ -85,7 +85,7 @@ class TestSequenceSerialization(unittest.TestCase):
         ))
 
         received = ''.join(
-            sequence.Sequence(sequence.Set('key', 'value')).serialize())
+            sequence.Sequence([sequence.Set('key', 'value')]).serialize())
 
         self.assertEquals(expected, received)
 
@@ -105,10 +105,10 @@ class TestSequenceSerialization(unittest.TestCase):
             bytes_('key'),
         ))
 
-        received = ''.join(sequence.Sequence(
+        received = ''.join(sequence.Sequence([
             sequence.Set('key', 'value'),
             sequence.Delete('key'),
-        ).serialize())
+        ]).serialize())
 
         self.assertEquals(expected, received)
 
@@ -135,10 +135,10 @@ class TestSequenceSerialization(unittest.TestCase):
             (0, 0, 0, 0), # 0 steps
         ))
 
-        received = ''.join(sequence.Sequence(
+        received = ''.join(sequence.Sequence([
             sequence.Delete('key'),
-            sequence.Sequence(
-                sequence.Delete('key'), sequence.Set('key', 'value')),
-            sequence.Sequence()).serialize())
+            sequence.Sequence([
+                sequence.Delete('key'), sequence.Set('key', 'value')]),
+            sequence.Sequence([])]).serialize())
 
         self.assertEquals(expected, received)

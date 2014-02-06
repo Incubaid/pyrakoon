@@ -141,18 +141,18 @@ class TestTypeCheck(unittest.TestCase):
             (sequence.Set('key', 'value'), True),
             (sequence.Delete('key'), True),
 
-            (sequence.Sequence(), True),
-            (sequence.Sequence(sequence.Set('key', 'value')), True),
-            (sequence.Sequence(
-                sequence.Set('key', 'value'), sequence.Delete('key')), True),
-            (sequence.Sequence(
-                sequence.Set('key', 'value'), sequence.Sequence(
-                    sequence.Set('key', 'value'), sequence.Delete('key'))),
+            (sequence.Sequence([]), True),
+            (sequence.Sequence([sequence.Set('key', 'value')]), True),
+            (sequence.Sequence([
+                sequence.Set('key', 'value'), sequence.Delete('key')]), True),
+            (sequence.Sequence([
+                sequence.Set('key', 'value'), sequence.Sequence([
+                    sequence.Set('key', 'value'), sequence.Delete('key')])]),
                 True),
 
             (object(), False),
             (None, False),
-            (sequence.Sequence(sequence.Delete('key'), object()), False)
+            (sequence.Sequence([sequence.Delete('key'), object()]), False)
         )
 
     def test_option(self):

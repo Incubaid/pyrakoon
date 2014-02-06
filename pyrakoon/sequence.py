@@ -124,10 +124,10 @@ class Sequence(Step):
     TAG = 5
     ARGS = ()
 
-    def __init__(self, *steps):
+    def __init__(self, steps):
         super(Sequence, self).__init__()
 
-        self._steps = tuple(steps)
+        self._steps = steps
 
     steps = property(operator.attrgetter('_steps'))
 
