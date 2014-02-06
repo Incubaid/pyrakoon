@@ -78,19 +78,20 @@ class Type(object):
 
     PACKER = None
     '''
-    `Struct` instance used by default `serialize` and `receive` implementations
+    :class:`~struct.Struct` instance used by default :meth:`serialize` and
+    :meth:`receive` implementations
 
-    :type: `struct.Struct`
+    :type: :class:`struct.Struct`
     ''' #pylint: disable-msg=W0105
 
     def check(self, value):
         '''Check whether a value is valid for this type
 
         :param value: Value to test
-        :type value: `object`
+        :type value: :obj:`object`
 
         :return: Whether the value is valid for this type
-        :rtype: `bool`
+        :rtype: :class:`bool`
         '''
 
         raise NotImplementedError
@@ -99,10 +100,10 @@ class Type(object):
         '''Serialize value
 
         :param value: Value to serialize
-        :type value: `object`
+        :type value: :obj:`object`
 
         :return: Iterable of bytes of the serialized value
-        :rtype: iterable of `str`
+        :rtype: iterable of :class:`str`
         '''
 
         if not self.PACKER:
@@ -113,14 +114,15 @@ class Type(object):
     def receive(self):
         '''Receive and parse a result from the server
 
-        This method is a coroutine which yields `Request` instances, and
-        finally a `Result`. When a `Request` instance is yield, the number of
-        bytes as specified in the *count* attribute should be sent back.
+        This method is a coroutine which yields :class:`Request` instances, and
+        finally a :class:`Result`. When a :class:`Request` instance is yielded,
+        the number of bytes as specified in the :attr:`~Request.count`
+        attribute should be sent back.
 
-        If finally a `Result` instance is yield, its *value* attribute
-        contains the actual message result.
+        If finally a :class:`Result` instance is yield, its
+        :attr:`~Result.value` attribute contains the actual message result.
 
-        :see: `Message.receive`
+        :see: :meth:`Message.receive`
         '''
 
         if not self.PACKER:
@@ -179,9 +181,9 @@ class UnsignedInteger(Type):
         '''Initialize an unsigned integer type
 
         :param bits: Bits containing the value
-        :type bits: `int`
+        :type bits: :class:`int`
         :param pack: Struct type, passed to `struct.Struct`
-        :type pack: `str`
+        :type pack: :class:`str`
         '''
 
         super(UnsignedInteger, self).__init__()
@@ -210,9 +212,9 @@ class SignedInteger(Type):
         '''Initialize an unsigned integer type
 
         :param bits: Bits containing the value
-        :type bits: `int`
+        :type bits: :class:`int`
         :param pack: Struct type, passed to `struct.Struct`
-        :type pack: `str`
+        :type pack: :class:`str`
         '''
 
         super(SignedInteger, self).__init__()
@@ -667,13 +669,13 @@ class Message(object):
     '''Docstring for methods exposing this command''' #pylint: disable-msg=W0105
 
     _tag_bytes = None
-    '''Serialized representation of `_TAG`''' #pylint: disable-msg=W0105
+    '''Serialized representation of :attr:`TAG`''' #pylint: disable-msg=W0105
 
     def serialize(self):
         '''Serialize the command
 
         :return: Iterable of bytes of the serialized version of the command
-        :rtype: iterable of `str`
+        :rtype: iterable of :class:`str`
         '''
 
         if self._tag_bytes is None:
@@ -698,17 +700,17 @@ class Message(object):
         Running as a coroutine, this method can read and parse the server
         result value once this command has been submitted.
 
-        This method yields values of type `Request` to request more data (which
-        should then be injected using the *send* method of the coroutine). The
-        number of requested bytes is provided in the *count* attribute of the
-        `Request` object.
+        This method yields values of type :class:`Request` to request more data
+        (which should then be injected using the :meth:`send` method of the
+        coroutine). The number of requested bytes is provided in the
+        :attr:`~Request.count` attribute of the :class:`Request` object.
 
-        Finally a `Result` value is generated, which contains the server result
-        in its *value* attribute.
+        Finally a :class:`Result` value is generated, which contains the server
+        result in its :attr:`~Result.value` attribute.
 
         :raise ArakoonError: Server returned an error code
 
-        :see: `pyrakoon.utils.process_blocking`
+        :see: :func:`pyrakoon.utils.process_blocking`
         '''
 
         from pyrakoon import errors
@@ -769,13 +771,13 @@ class Hello(Message):
         receiving a "hello" command.
 
         :param client_id: Identifier of the client
-        :type client_id: `str`
+        :type client_id: :class:`str`
         :param cluster_id: Identifier of the cluster connecting to. \
             This must match the cluster configuration.
-        :type cluster_id: `str`
+        :type cluster_id: :class:`str`
 
         :return: Message returned by the server
-        :rtype: `str`
+        :rtype: :class:`str`
     ''')
 
     def __init__(self, client_id, cluster_id):
@@ -804,7 +806,7 @@ class WhoMaster(Message):
         cluster.
 
         :return: Name of cluster master node
-        :rtype: `str`
+        :rtype: :class:`str`
     ''')
 
 
@@ -824,12 +826,12 @@ class Exists(Message):
         set on the server.
 
         :param key: Key to test
-        :type key: `str`
+        :type key: :class:`str`
         :param allow_dirty: Allow reads from slave nodes
-        :type allow_dirty: `bool`
+        :type allow_dirty: :class:`bool`
 
         :return: Whether the given key is set on the server
-        :rtype: `bool`
+        :rtype: :class:`bool`
     ''')
 
     def __init__(self, allow_dirty, key):
@@ -857,12 +859,12 @@ class Get(Message):
         This method returns the value of the requested key.
 
         :param key: Key to retrieve
-        :type key: `str`
+        :type key: :class:`str`
         :param allow_dirty: Allow reads from slave nodes
-        :type allow_dirty: `bool`
+        :type allow_dirty: :class:`bool`
 
         :return: Value for the given key
-        :rtype: `str`
+        :rtype: :class:`str`
     ''')
 
     def __init__(self, allow_dirty, key):
@@ -890,9 +892,9 @@ class Set(Message):
         This method sets a given key to a given value on the server.
 
         :param key: Key to set
-        :type key: `str`
+        :type key: :class:`str`
         :param value: Value to set
-        :type value: `str`
+        :type value: :class:`str`
     ''')
 
     def __init__(self, key, value):
@@ -920,7 +922,7 @@ class Delete(Message):
         This method deletes a given key from the cluster.
 
         :param key: Key to delete
-        :type key: `str`
+        :type key: :class:`str`
     ''')
 
     def __init__(self, key):
@@ -944,18 +946,18 @@ class PrefixKeys(Message):
         Send a "prefix_keys" command to the server
 
         This method retrieves a list of keys from the cluster matching a given
-        prefix. A maximum number of returned keys can be provided. If set to -1
-        (the default), all matching keys will be returned.
+        prefix. A maximum number of returned keys can be provided. If set to
+        *-1* (the default), all matching keys will be returned.
 
         :param prefix: Prefix to match
-        :type prefix: `str`
+        :type prefix: :class:`str`
         :param max_elements: Maximum number of keys to return
-        :type max_elements: `int`
+        :type max_elements: :class:`int`
         :param allow_dirty: Allow reads from slave nodes
-        :type allow_dirty: `bool`
+        :type allow_dirty: :class:`bool`
 
         :return: Keys matching the given prefix
-        :rtype: iterable of `str`
+        :rtype: iterable of :class:`str`
     ''')
 
     def __init__(self, allow_dirty, prefix, max_elements):
@@ -983,24 +985,24 @@ class TestAndSet(Message):
     DOC = utils.format_doc('''
         Send a "test_and_set" command to the server
 
-        When `test_value` is not `None`, the value for `key` will only be
+        When `test_value` is not :data:`None`, the value for `key` will only be
         modified if the existing value on the server is equal to `test_value`.
-        When `test_value` is `None`, the `key` will only be set of there was no
-        value set for the `key` before.
+        When `test_value` is :data:`None`, the `key` will only be set of there
+        was no value set for the `key` before.
 
-        When `set_value` is `None`, the `key` will be deleted on the server.
+        When `set_value` is :data:`None`, the `key` will be deleted on the server.
 
         The original value for `key` is returned.
 
         :param key: Key to act on
-        :type key: `str`
+        :type key: :class:`str`
         :param test_value: Expected value to test for
-        :type test_value: `str` or `None`
+        :type test_value: :class:`str` or :data:`None`
         :param set_value: New value to set
-        :type set_value: `str` or `None`
+        :type set_value: :class:`str` or :data:`None`
 
         :return: Original value of `key`
-        :rtype: `str`
+        :rtype: :class:`str`
     ''')
 
     def __init__(self, key, test_value, set_value):
@@ -1027,13 +1029,13 @@ class Sequence(Message):
         Send a "sequence" or "synced_sequence" command to the server
 
         The operations passed to the constructor should be instances of
-        implementations of the `pyrakoon.sequence.Step` class. These operations
-        will be executed in an all-or-nothing transaction.
+        implementations of the :class:`pyrakoon.sequence.Step` class. These
+        operations will be executed in an all-or-nothing transaction.
 
         :param steps: Steps to execute
-        :type steps: iterable of `pyrakoon.sequence.Step`
-        :param sync: Use `synced_sequence`
-        :type sync: `bool`
+        :type steps: iterable of :class:`pyrakoon.sequence.Step`
+        :param sync: Use *synced_sequence*
+        :type sync: :class:`bool`
     ''')
 
     def __init__(self, steps, sync):
@@ -1088,19 +1090,19 @@ class Range(Message):
         negative, all matching keys are returned.
 
         :param begin_key: Begin of range
-        :type begin_key: `str`
+        :type begin_key: :class:`str`
         :param begin_inclusive: `begin_key` is in- or exclusive
-        :type begin_inclusive: `bool`
+        :type begin_inclusive: :class:`bool`
         :param end_key: End of range
-        :type end_key: `str`
+        :type end_key: :class:`str`
         :param end_inclusive: `end_key` is in- or exclusive
         :param max_elements: Maximum number of keys to return
-        :type max_elements: `int`
+        :type max_elements: :class:`int`
         :param allow_dirty: Allow reads from slave nodes
-        :type allow_dirty: `bool`
+        :type allow_dirty: :class:`bool`
 
         :return: List of matching keys
-        :rtype: iterable of `str`
+        :rtype: iterable of :class:`str`
     ''')
 
     #pylint: disable-msg=R0913
@@ -1147,19 +1149,20 @@ class RangeEntries(Message):
         negative, all matching items are returned.
 
         :param begin_key: Begin of range
-        :type begin_key: `str`
+        :type begin_key: :class:`str`
         :param begin_inclusive: `begin_key` is in- or exclusive
-        :type begin_inclusive: `bool`
+        :type begin_inclusive: :class:`bool`
         :param end_key: End of range
-        :type end_key: `str`
+        :type end_key: :class:`str`
         :param end_inclusive: `end_key` is in- or exclusive
+        :type end_inclusive: :class:`bool`
         :param max_elements: Maximum number of items to return
-        :type max_elements: `int`
+        :type max_elements: :class:`int`
         :param allow_dirty: Allow reads from slave nodes
-        :type allow_dirty: `bool`
+        :type allow_dirty: :class:`bool`
 
         :return: List of matching (key, value) pairs
-        :rtype: iterable of (`str`, `str`)
+        :rtype: iterable of `(str, str)`
     ''')
 
     #pylint: disable-msg=R0913
@@ -1197,12 +1200,12 @@ class MultiGet(Message):
         This method returns a list of the values for all requested keys.
 
         :param keys: Keys to look up
-        :type keys: iterable of `str`
+        :type keys: iterable of :class:`str`
         :param allow_dirty: Allow reads from slave nodes
-        :type allow_dirty: `bool`
+        :type allow_dirty: :class:`bool`
 
         :return: Requested values
-        :rtype: iterable of `str`
+        :rtype: iterable of :class:`str`
     ''')
 
     def __init__(self, allow_dirty, keys):
@@ -1230,9 +1233,9 @@ class MultiGetOption(Message):
         This method returns a list of value options for all requested keys.
 
         :param keys: Keys to look up
-        :type keys: iterable of `str`
+        :type keys: iterable of :class:`str`
         :param allow_dirty: Allow reads from slave nodes
-        :type allow_dirty: `bool`
+        :type allow_dirty: :class:`bool`
 
         :return: Requested values
         :rtype: iterable of (`str` or `None`)
@@ -1263,7 +1266,7 @@ class ExpectProgressPossible(Message):
         This method returns whether the master thinks progress is possible.
 
         :return: Whether the master thinks progress is possible
-        :rtype: `bool`
+        :rtype: :class:`bool`
     ''')
 
 
@@ -1282,7 +1285,7 @@ class GetKeyCount(Message):
         This method returns the number of items stored in Arakoon.
 
         :return: Number of items stored in the database
-        :rtype: `int`
+        :rtype: :class:`int`
     ''')
 
 
@@ -1301,12 +1304,12 @@ class UserFunction(Message):
         This method returns the result of the function invocation.
 
         :param function: Name of the user function to invoke
-        :type function: `str`
+        :type function: :class:`str`
         :param argument: Argument to pass to the function
-        :type argument: `str` or `None`
+        :type argument: :class:`str` or :data:`None`
 
         :return: Result of the function invocation
-        :rtype: `str` or `None`
+        :rtype: :class:`str` or :data:`None`
     ''')
 
     def __init__(self, function, argument):
@@ -1336,9 +1339,9 @@ class Confirm(Message):
         which case the action becomes a no-op.
 
         :param key: Key to set
-        :type key: `str`
+        :type key: :class:`str`
         :param value: Value to set
-        :type value: `str`
+        :type value: :class:`str`
     ''')
 
     def __init__(self, key, value):
@@ -1367,11 +1370,11 @@ class Assert(Message):
         key is not what was expected.
 
         :param key: Key to check
-        :type key: `str`
+        :type key: :class:`str`
         :param value: Optional value to compare
-        :type value: `str` or `None`
+        :type value: :class:`str` or :data:`None`
         :param allow_dirty: Allow reads from slave nodes
-        :type allow_dirty: `bool`
+        :type allow_dirty: :class:`bool`
     ''')
 
     def __init__(self, allow_dirty, key, value):
@@ -1402,9 +1405,9 @@ class AssertExists(Message):
         the database.
 
         :param key: Key to check
-        :type key: `str`
+        :type key: :class:`str`
         :param allow_dirty: Allow reads from slave nodes
-        :type allow_dirty: `bool`
+        :type allow_dirty: :class:`bool`
     ''')
 
     def __init__(self, allow_dirty, key):
@@ -1442,19 +1445,20 @@ class RevRangeEntries(Message):
         negative, all matching items are returned.
 
         :param begin_key: Begin of range
-        :type begin_key: `str`
+        :type begin_key: :class:`str`
         :param begin_inclusive: `begin_key` is in- or exclusive
-        :type begin_inclusive: `bool`
+        :type begin_inclusive: :class:`bool`
         :param end_key: End of range
-        :type end_key: `str`
+        :type end_key: :class:`str`
         :param end_inclusive: `end_key` is in- or exclusive
+        :type end_inclusive: :class:`bool`
         :param max_elements: Maximum number of items to return
-        :type max_elements: `int`
+        :type max_elements: :class:`int`
         :param allow_dirty: Allow reads from slave nodes
-        :type allow_dirty: `bool`
+        :type allow_dirty: :class:`bool`
 
         :return: List of matching (key, value) pairs
-        :rtype: iterable of (`str`, `str`)
+        :rtype: iterable of `(str, str)`
     ''')
 
     #pylint: disable-msg=R0913
@@ -1531,9 +1535,9 @@ class DeletePrefix(Message):
         database where given `prefix` is a prefix of `key`.
 
         :param prefix: Prefix of binding keys to delete
-        :type prefix: `str`
+        :type prefix: :class:`str`
         :return: Number of deleted bindings
-        :rtype: `int`
+        :rtype: :class:`int`
     ''')
 
     def __init__(self, prefix):
@@ -1558,16 +1562,16 @@ class Replace(Message):
 
         `replace key value` will replace the value bound to the given key with
         the provided value, and return the old value bound to the key.
-        If `value` is `None`, the key is deleted.
-        If the key was not present in the database, `None` is returned.
+        If `value` is :data:`None`, the key is deleted.
+        If the key was not present in the database, :data:`None` is returned.
 
         :param key: Key to replace
-        :type key: `str`
+        :type key: :class:`str`
         :param value: Value to set
-        :type value: `str` or `None`
+        :type value: :class:`str` or :data:`None`
 
         :return: Original value bound to the key
-        :rtype: `str` or `None`
+        :rtype: :class:`str` or :data:`None`
     ''')
 
     def __init__(self, key, value):
@@ -1611,7 +1615,7 @@ class GetCurrentState(Message):
         and can be used for troubleshooting purposes.
 
         :return: State of the server
-        :rtype: `str`
+        :rtype: :class:`str`
     ''')
 
 
@@ -1642,10 +1646,10 @@ def build_prologue(cluster):
     '''Return the string to send as prologue
 
     :param cluster: Name of the cluster to which a connection is made
-    :type cluster: `str`
+    :type cluster: :class:`str`
 
     :return: Prologue to send to the Arakoon server
-    :rtype: `str`
+    :rtype: :class:`str`
     '''
 
     return ''.join(itertools.chain(

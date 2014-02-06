@@ -101,7 +101,7 @@ class CollapseTlogs(protocol.Message):
         The number of *TLOG* files to keep should be passed as a parameter.
 
         :param count: Number of *TLOG* files to keep
-        :type count: `int`
+        :type count: :class:`int`
         :return: For every *TLOG*, the time it took to collapse it
         :rtype: `[int]`
     ''')

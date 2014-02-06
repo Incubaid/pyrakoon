@@ -19,7 +19,7 @@
 # GNU Affero General Public License along with this program (file "COPYING").
 # If not, see <http://www.gnu.org/licenses/>.
 
-'''Exceptions raised by `pyrakoon.client.Client` methods'''
+'''Exceptions raised by client operations, as returned by a node'''
 
 import inspect
 

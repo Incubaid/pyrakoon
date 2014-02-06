@@ -171,7 +171,7 @@ def %%(name)s(%(signature)s):
         :param fun: Callable to decorate
         :type fun: `callable`
 
-        :see: `update_argspec`
+        :see: :func:`update_argspec`
         '''
 
         # We need unique names for the variables used in the function template,
@@ -333,7 +333,8 @@ def read_blocking(receiver, read_fun):
     :return: Message result
     :rtype: :obj:`object`
 
-    :raise TypeError: Coroutine didn't return a :class:`~pyrakoon.protocol.Result`
+    :raise TypeError:
+        Coroutine didn't return a :class:`~pyrakoon.protocol.Result`
 
     :see: :meth:`pyrakoon.protocol.Message.receive`
     '''

@@ -29,8 +29,6 @@ class ClientMixin: #pylint: disable-msg=W0232,R0904
     '''Mixin providing client actions for standard cluster functionality
 
     This can be mixed into any class implementing :class:`AbstractClient`.
-
-    :see: :class:`AbstractClient`
     '''
 
     #pylint: disable-msg=C0111
@@ -135,7 +133,7 @@ class ClientMixin: #pylint: disable-msg=W0232,R0904
         assert False
 
     @call(protocol.GetCurrentState)
-    def get_current_state(self): #pylint: disable-msgR0201
+    def get_current_state(self): #pylint: disable-msg=R0201
         assert False
 
     __getitem__ = get
@@ -152,16 +150,24 @@ class AbstractClient: #pylint: disable-msg=W0232,R0903,R0922
     '''Abstract base class for implementations of Arakoon clients'''
 
     connected = False
+    '''Flag to denote whether the client is connected
+
+    If this is :data:`False`, a :class:`NotConnectedError` will be raised when
+    a call is issued.
+
+    :type: :class:`bool`
+    '''
 
     def _process(self, message):
         '''
         Submit a message to the server, parse the result and return it
 
-        The given `message` should be serialized using its `serialize` method
-        and submitted to the server. Then the `receive` coroutine of the message
-        should be used to retrieve and parse a result from the server. The
-        returned value should be returned by this method, or any exceptions
-        should be rethrown if caught.
+        The given `message` should be serialized using its
+        :meth:`~pyrakoon.protocol.Message.serialize` method and submitted to
+        the server. Then the :meth:`~pyrakoon.protocol.Message.receive`
+        coroutine of the `message` should be used to retrieve and parse a
+        result from the server. The result value should be returned by this
+        method, or any exceptions should be rethrown if caught.
 
         :param message: Message to handle
         :type message: :class:`pyrakoon.protocol.Message`
@@ -169,8 +175,6 @@ class AbstractClient: #pylint: disable-msg=W0232,R0903,R0922
         :return: Server result value
         :rtype: :obj:`object`
 
-        :see: :meth:`pyrakoon.protocol.Message.serialize`
-        :see: :meth:`pyrakoon.protocol.Message.receive`
         :see: :func:`pyrakoon.utils.process_blocking`
         '''
 
@@ -179,9 +183,20 @@ class AbstractClient: #pylint: disable-msg=W0232,R0903,R0922
 
 #pylint: disable-msg=R0904
 class SocketClient(object, AbstractClient):
-    '''Arakoon client using TCP to contact the cluster'''
+    '''Arakoon client using TCP to contact a cluster node
+
+    :warning: Due to the lack of resource and exception management, this is
+        not intended to be used in real-world code.
+    '''
 
     def __init__(self, address, cluster_id):
+        '''
+        :param address: Node address (host & port)
+        :type address: `(str, int)`
+        :param cluster_id: Identifier of the cluster
+        :type cluster_id: `str`
+        '''
+
         import threading
 
         super(SocketClient, self).__init__()

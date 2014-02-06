@@ -1,6 +1,6 @@
 # This file is part of Pyrakoon, a distributed key-value store client.
 #
-# Copyright (C) 2010, 2013 Incubaid BVBA
+# Copyright (C) 2010, 2013, 2014 Incubaid BVBA
 #
 # Licensees holding a valid Incubaid license may use this file in
 # accordance with Incubaid's Arakoon commercial license agreement. For
@@ -29,9 +29,9 @@ def validate_types(specs, args):
     '''Validate method call argument types
 
     :param specs: Spec of expected types
-    :type specs: iterable of (`str`, `pyrakoon.protocol.Type`,)
+    :type specs: iterable of `(str, pyrakoon.protocol.Type)`
     :param args: Argument values
-    :type args: iterable of `object`
+    :type args: iterable of :obj:`object`
 
     :raise TypeError: Type of an argument is invalid
     :raise ValueError: Value of an argument is invalid
@@ -49,14 +49,14 @@ def validate_types(specs, args):
 
 
 def call(message_type):
-    '''Expose a `pyrakoon.protocol.Message` as a method on a client
+    '''Expose a :class:`~pyrakoon.protocol.Message` as a method on a client
 
     :note: If the client method has an `allow_dirty` option (i.e.
-        `protocol.ALLOW_DIRTY_ARG` is present in the `ARGS` field of
-        `message_type`), this is automatically moved to the back.
+        :data:`pyrakoon.protocol.ALLOW_DIRTY_ARG` is present in the :attr:`ARGS`
+        field of `message_type`), this is automatically moved to the back.
 
     :param message_type: Type of the message this method should call
-    :type message_type: `type`
+    :type message_type: :class:`type`
 
     :return: Method which wraps a call to an Arakoon server using given message
         type

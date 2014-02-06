@@ -1,6 +1,6 @@
 # This file is part of Pyrakoon, a distributed key-value store client.
 #
-# Copyright (C) 2010 Incubaid BVBA
+# Copyright (C) 2010, 2014 Incubaid BVBA
 #
 # Licensees holding a valid Incubaid license may use this file in
 # accordance with Incubaid's Arakoon commercial license agreement. For
@@ -23,7 +23,7 @@
 
 import operator
 
-from pyrakoon import protocol
+from pyrakoon import protocol, utils
 
 #pylint: disable-msg=R0903
 
@@ -46,7 +46,7 @@ class Step(object):
         '''Serialize the operation
 
         :return: Serialized operation
-        :rtype: iterable of `str`
+        :rtype: iterable of :class:`str`
         '''
 
         for bytes_ in protocol.UINT32.serialize(self.TAG):
@@ -69,8 +69,18 @@ class Set(Step):
         self._key = key
         self._value = value
 
-    key = property(operator.attrgetter('_key'))
-    value = property(operator.attrgetter('_value'))
+    key = property(operator.attrgetter('_key'),
+        doc=utils.format_doc('''
+            Key to set
+
+            :type: :class:`str`
+        '''))
+    value = property(operator.attrgetter('_value'),
+        doc=utils.format_doc('''
+            Value to set
+
+            :type: :class:`str`
+        '''))
 
 class Delete(Step):
     '''"Delete" operation'''
@@ -83,7 +93,12 @@ class Delete(Step):
 
         self._key = key
 
-    key = property(operator.attrgetter('_key'))
+    key = property(operator.attrgetter('_key'),
+        doc=utils.format_doc('''
+            Key to delete
+
+            :type: :class:`str`
+        '''))
 
 class Assert(Step):
     '''"Assert" operation'''
@@ -98,8 +113,18 @@ class Assert(Step):
         self._key = key
         self._value = value
 
-    key = property(operator.attrgetter('_key'))
-    value = property(operator.attrgetter('_value'))
+    key = property(operator.attrgetter('_key'),
+        doc=utils.format_doc('''
+            Key for which to assert the given value
+
+            :type: :class:`str`
+        '''))
+    value = property(operator.attrgetter('_value'),
+        doc=utils.format_doc('''
+            Expected value
+
+            :type: :class:`str` or :data:`None`
+        '''))
 
 class AssertExists(Step):
     '''"AssertExists" operation'''
@@ -112,7 +137,12 @@ class AssertExists(Step):
 
         self._key = key
 
-    key = property(operator.attrgetter('_key'))
+    key = property(operator.attrgetter('_key'),
+        doc=utils.format_doc('''
+            Key to check
+
+            :type: :class:`str`
+        '''))
 
 
 class Sequence(Step):
@@ -129,7 +159,12 @@ class Sequence(Step):
 
         self._steps = steps
 
-    steps = property(operator.attrgetter('_steps'))
+    steps = property(operator.attrgetter('_steps'),
+        doc=utils.format_doc('''
+            Sequence steps
+
+            :type: iterable of :class:`Step`
+        '''))
 
     def serialize(self):
         for bytes_ in protocol.UINT32.serialize(self.TAG):
