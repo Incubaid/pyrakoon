@@ -27,7 +27,7 @@ class ArakoonError(Exception):
     '''Base type for all Arakoon client errors'''
 
     CODE = None
-    '''Error code sent by the Arakoon server''' #pylint: disable-msg=W0105
+    '''Error code sent by the Arakoon server''' #pylint: disable=W0105
 
 class NoMagic(ArakoonError):
     '''Server received a command without the magic mask'''
@@ -49,7 +49,7 @@ class NotMaster(ArakoonError):
 
     CODE = 0x0004
 
-class NotFound(KeyError, ArakoonError): #pylint: disable-msg=R0901
+class NotFound(KeyError, ArakoonError): #pylint: disable=R0901
     '''Key not found'''
 
     CODE = 0x0005
@@ -99,4 +99,4 @@ ERROR_MAP = dict((value.CODE, value) for value in globals().itervalues()
     if inspect.isclass(value)
         and issubclass(value, ArakoonError)
         and value.CODE is not None)
-'''Map of Arakoon error codes to exception types''' #pylint: disable-msg=W0105
+'''Map of Arakoon error codes to exception types''' #pylint: disable=W0105

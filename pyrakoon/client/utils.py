@@ -86,9 +86,9 @@ def call(message_type):
             name, _, default = protocol.ALLOW_DIRTY_ARG
             argspec.append((name, default))
 
-        @utils.update_argspec(*argspec) #pylint: disable-msg=W0142
+        @utils.update_argspec(*argspec) #pylint: disable=W0142
         @functools.wraps(fun)
-        def wrapped(**kwargs): #pylint: disable-msg=C0111
+        def wrapped(**kwargs): #pylint: disable=C0111
             self = kwargs['self']
 
             if not self.connected:
@@ -98,11 +98,11 @@ def call(message_type):
             args = tuple(kwargs[arg[0]] for arg in message_type.ARGS)
             validate_types(message_type.ARGS, args)
 
-            message = message_type(*args) #pylint: disable-msg=W0142
+            message = message_type(*args) #pylint: disable=W0142
 
-            return self._process(message) #pylint: disable-msg=W0212
+            return self._process(message) #pylint: disable=W0212
 
-        wrapped.__doc__ = message_type.DOC #pylint: disable-msg=W0622
+        wrapped.__doc__ = message_type.DOC #pylint: disable=W0622
 
         return wrapped
 

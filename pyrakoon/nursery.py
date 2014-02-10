@@ -21,7 +21,7 @@
 
 '''Arakoon Nursery support'''
 
-#pylint: disable-msg=R0903
+#pylint: disable=R0903
 # R0903: Too few public methods
 
 import logging
@@ -48,11 +48,11 @@ class NurseryConfigType(protocol.Type):
 
     def receive(self):
         buffer_receiver = protocol.STRING.receive()
-        request = buffer_receiver.next() #pylint: disable-msg=E1101
+        request = buffer_receiver.next() #pylint: disable=E1101
 
         while isinstance(request, protocol.Request):
             value = yield request
-            request = buffer_receiver.send(value) #pylint: disable-msg=E1101
+            request = buffer_receiver.send(value) #pylint: disable=E1101
 
         if not isinstance(request, protocol.Result):
             raise TypeError

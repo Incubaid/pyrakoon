@@ -33,16 +33,16 @@ from twisted.python import log
 
 from pyrakoon import client, errors, protocol, utils
 
-#pylint: disable-msg=R0904,C0103,R0901
+#pylint: disable=R0904,C0103,R0901
 
 # R0904: Too many public methods
 # C0103: Invalid name
 # R0901: Too many ancestors
 
 try:
-    _PauseableMixin = basic._PauseableMixin #pylint: disable-msg=C0103,W0212
+    _PauseableMixin = basic._PauseableMixin #pylint: disable=C0103,W0212
 except AttributeError:
-    class _PauseableMixin: #pylint: disable-msg=W0232
+    class _PauseableMixin: #pylint: disable=W0232,C1001
         '''Mixin to add *IProducer* support to a protocol'''
 
         paused = False
@@ -154,11 +154,11 @@ class ArakoonProtocol(object,
 
             return None
 
-        receiver, deferred = self._currentHandler
+        receiver, deferred = self._currentHandler #pylint: disable=W0633
 
         try:
             request = receiver.send(data)
-        except Exception, exc: #pylint: disable-msg=W0703
+        except Exception, exc: #pylint: disable=W0703
             if not isinstance(exc, errors.ArakoonError):
                 log.err(exc, 'Exception raised by message receive loop')
 
@@ -190,7 +190,7 @@ class ArakoonProtocol(object,
     def _handleResult(self, result):
         '''Handler for `Result` values emitted by a message decoder'''
 
-        receiver, deferred = self._currentHandler
+        receiver, deferred = self._currentHandler #pylint: disable=W0633
         self._currentHandler = None
 
         deferred.callback(result.value)
@@ -227,7 +227,7 @@ class ArakoonProtocol(object,
         if self._currentHandler:
             log.msg('Canceling current handler')
 
-            receiver, deferred = self._currentHandler
+            receiver, deferred = self._currentHandler #pylint: disable=W0633
             self._currentHandler = None
 
             if not deferred.called:

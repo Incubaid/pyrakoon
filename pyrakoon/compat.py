@@ -33,8 +33,10 @@ from pyrakoon import client, errors, protocol, sequence, utils
 
 __docformat__ = 'epytext'
 
-#pylint: disable-msg=C0111,W0142,R0912,C0103,W0212,R0913,W0201,W0231,R0903
-#pylint: disable-msg=W0223,R0201,W0703,E1121,R0904
+#pylint: skip-file
+
+#pylint: disable=C0111,W0142,R0912,C0103,W0212,R0913,W0201,W0231,R0903
+#pylint: disable=W0223,R0201,W0703,E1121,R0904
 
 # C0111: Missing docstring
 # W0142: Used * or ** magic
@@ -55,7 +57,7 @@ LOGGER = logging.getLogger(__name__)
 
 def _add_handler():
     if hasattr(logging, 'NullHandler'):
-        handler = logging.NullHandler() #pylint: disable-msg=E1101
+        handler = logging.NullHandler() #pylint: disable=E1101
     else:
         class NullHandler(logging.Handler):
             def emit(self, record):
@@ -278,7 +280,7 @@ class ArakoonClient(object):
 
             return sequence.Sequence(steps)
 
-        #pylint: disable-msg=E1123
+        #pylint: disable=E1123
         return self._client.sequence((convert_sequence(seq), ), sync=sync)
 
     @utils.update_argspec('self', 'key')

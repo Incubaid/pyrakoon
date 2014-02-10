@@ -25,115 +25,115 @@ from pyrakoon import errors, protocol
 import pyrakoon.utils
 from pyrakoon.client.utils import call
 
-class ClientMixin: #pylint: disable-msg=W0232,R0904
+class ClientMixin: #pylint: disable=W0232,R0904,old-style-class
     '''Mixin providing client actions for standard cluster functionality
 
     This can be mixed into any class implementing :class:`AbstractClient`.
     '''
 
-    #pylint: disable-msg=C0111
+    #pylint: disable=C0111
     @call(protocol.Hello)
-    def hello(self): #pylint: disable-msg=R0201
+    def hello(self): #pylint: disable=R0201
         assert False
 
     @call(protocol.Exists)
-    def exists(self): #pylint: disable-msg=R0201
+    def exists(self): #pylint: disable=R0201
         assert False
 
     @call(protocol.WhoMaster)
-    def who_master(self): #pylint: disable-msg=R0201
+    def who_master(self): #pylint: disable=R0201
         assert False
 
     @call(protocol.Get)
-    def get(self): #pylint: disable-msg=R0201
+    def get(self): #pylint: disable=R0201
         assert False
 
     @call(protocol.Set)
-    def set(self): #pylint: disable-msg=R0201
+    def set(self): #pylint: disable=R0201
         assert False
 
     @call(protocol.Delete)
-    def delete(self): #pylint: disable-msg=R0201
+    def delete(self): #pylint: disable=R0201
         assert False
 
     @call(protocol.PrefixKeys)
-    def prefix(self): #pylint: disable-msg=R0201
+    def prefix(self): #pylint: disable=R0201
         assert False
 
     @call(protocol.TestAndSet)
-    def test_and_set(self): #pylint: disable-msg=R0201
+    def test_and_set(self): #pylint: disable=R0201
         assert False
 
     @call(protocol.Sequence)
-    def sequence(self): #pylint: disable-msg=R0201
+    def sequence(self): #pylint: disable=R0201
         assert False
 
     @call(protocol.Range)
-    def range(self): #pylint: disable-msg=R0201
+    def range(self): #pylint: disable=R0201
         assert False
 
     @call(protocol.RangeEntries)
-    def range_entries(self): #pylint: disable-msg=R0201
+    def range_entries(self): #pylint: disable=R0201
         assert False
 
     @call(protocol.MultiGet)
-    def multi_get(self): #pylint: disable-msg=R0201
+    def multi_get(self): #pylint: disable=R0201
         assert False
 
     @call(protocol.MultiGetOption)
-    def multi_get_option(self): #pylint: disable-msg=R0201
+    def multi_get_option(self): #pylint: disable=R0201
         assert False
 
     @call(protocol.ExpectProgressPossible)
-    def expect_progress_possible(self): #pylint: disable-msg=R0201
+    def expect_progress_possible(self): #pylint: disable=R0201
         assert False
 
     @call(protocol.GetKeyCount)
-    def get_key_count(self): #pylint: disable-msg=R0201
+    def get_key_count(self): #pylint: disable=R0201
         assert False
 
     @call(protocol.UserFunction)
-    def user_function(self): #pylint: disable-msg=R0201
+    def user_function(self): #pylint: disable=R0201
         assert False
 
     @call(protocol.Confirm)
-    def confirm(self): #pylint: disable-msg=R0201
+    def confirm(self): #pylint: disable=R0201
         assert False
 
     @call(protocol.Assert)
-    def assert_(self): #pylint: disable-msg=R0201
+    def assert_(self): #pylint: disable=R0201
         assert False
 
     @call(protocol.RevRangeEntries)
-    def rev_range_entries(self): #pylint: disable-msg=R0201
+    def rev_range_entries(self): #pylint: disable=R0201
         assert False
 
     @call(protocol.Statistics)
-    def statistics(self): #pylint: disable-msg=R0201
+    def statistics(self): #pylint: disable=R0201
         assert False
 
     @call(protocol.Version)
-    def version(self): #pylint: disable-msg=R0201
+    def version(self): #pylint: disable=R0201
         assert False
 
     @call(protocol.AssertExists)
-    def assert_exists(self): #pylint: disable-msg=R0201
+    def assert_exists(self): #pylint: disable=R0201
         assert False
 
     @call(protocol.DeletePrefix)
-    def delete_prefix(self): #pylint: disable-msg=R0201
+    def delete_prefix(self): #pylint: disable=R0201
         assert False
 
     @call(protocol.Replace)
-    def replace(self): #pylint: disable-msg=R0201
+    def replace(self): #pylint: disable=R0201
         assert False
 
     @call(protocol.Nop)
-    def nop(self): #pylint: disable-msg=R0201
+    def nop(self): #pylint: disable=R0201
         assert False
 
     @call(protocol.GetCurrentState)
-    def get_current_state(self): #pylint: disable-msg=R0201
+    def get_current_state(self): #pylint: disable=R0201
         assert False
 
     __getitem__ = get
@@ -146,9 +146,10 @@ class NotConnectedError(RuntimeError):
     '''Error used when a call on a not-connected client is made'''
 
 
-class AbstractClient: #pylint: disable-msg=W0232,R0903,R0922
+class AbstractClient: #pylint: disable=W0232,R0903,R0922,old-style-class
     '''Abstract base class for implementations of Arakoon clients'''
 
+    #pylint: disable=pointless-string-statement
     connected = False
     '''Flag to denote whether the client is connected
 
@@ -181,7 +182,7 @@ class AbstractClient: #pylint: disable-msg=W0232,R0903,R0922
         raise NotImplementedError
 
 
-#pylint: disable-msg=R0904
+#pylint: disable=R0904
 class SocketClient(object, AbstractClient):
     '''Arakoon client using TCP to contact a cluster node
 

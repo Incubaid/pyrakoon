@@ -28,10 +28,10 @@ import functools
 import itertools
 
 LOGGER = logging.getLogger(__name__)
-'''Logger for code in this module''' #pylint: disable-msg=W0105
+'''Logger for code in this module''' #pylint: disable=W0105
 
 
-def update_argspec(*argnames): #pylint: disable-msg=R0912
+def update_argspec(*argnames): #pylint: disable=R0912
     '''Wrap a callable to use real argument names
 
     When generating functions at runtime, one often needs to fall back to
@@ -281,11 +281,11 @@ def kill_coroutine(coroutine, log_fun=None):
 
     try:
         coroutine.close()
-    except: #pylint: disable-msg=W0702
+    except: #pylint: disable=W0702
         try:
             if log_fun:
                 log_fun('Failure while killing coroutine')
-        except: #pylint: disable-msg=W0702
+        except: #pylint: disable=W0702
             pass
 
 

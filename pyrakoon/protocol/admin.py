@@ -111,8 +111,8 @@ class CollapseTlogs(protocol.Message):
 
     count = property(operator.attrgetter('_count'))
 
-    def receive(self): #pylint: disable-msg=R0912
-        self.RETURN_TYPE = protocol.INT32
+    def receive(self): #pylint: disable=R0912
+        self.RETURN_TYPE = protocol.INT32 #pylint: disable=C0103
 
         count_receiver = protocol.Message.receive(self)
         request = count_receiver.next()

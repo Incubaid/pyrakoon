@@ -25,15 +25,15 @@ import operator
 
 from pyrakoon import protocol, utils
 
-#pylint: disable-msg=R0903
+#pylint: disable=R0903
 
 class Step(object):
     '''A step in a sequence operation'''
 
     TAG = None
-    '''Operation command tag''' #pylint: disable-msg=W0105
+    '''Operation command tag''' #pylint: disable=W0105
     ARGS = None
-    '''Argument definition''' #pylint: disable-msg=W0105
+    '''Argument definition''' #pylint: disable=W0105
 
     def __init__(self, *args):
         if len(args) != len(self.ARGS):

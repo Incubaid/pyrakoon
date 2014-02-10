@@ -24,26 +24,26 @@
 from pyrakoon.client import utils
 from pyrakoon.protocol import admin
 
-class ClientMixin: #pylint: disable-msg=W0232
+class ClientMixin: #pylint: disable=W0232,C1001
     '''Mixin providing client actions for node administration
 
     This can be mixed into any class implementing
     :class:`pyrakoon.client.AbstractClient`.
     '''
 
-    #pylint: disable-msg=C0111,R0201
-    @utils.call(admin.OptimizeDB) #pylint: disable-msg=E1101
+    #pylint: disable=C0111,R0201
+    @utils.call(admin.OptimizeDB) #pylint: disable=E1101
     def optimize_db(self):
         assert False
 
-    @utils.call(admin.DefragDB) #pylint: disable-msg=E1101
+    @utils.call(admin.DefragDB) #pylint: disable=E1101
     def defrag_db(self):
         assert False
 
-    @utils.call(admin.DropMaster) #pylint: disable-msg=E1101
+    @utils.call(admin.DropMaster) #pylint: disable=E1101
     def drop_master(self):
         assert False
 
-    @utils.call(admin.CollapseTlogs) #pylint: disable-msg=E1101
+    @utils.call(admin.CollapseTlogs) #pylint: disable=E1101
     def collapse_tlogs(self):
         assert False
