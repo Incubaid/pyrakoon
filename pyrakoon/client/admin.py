@@ -47,3 +47,7 @@ class ClientMixin: #pylint: disable=W0232,C1001
     @utils.call(admin.CollapseTlogs) #pylint: disable=E1101
     def collapse_tlogs(self):
         assert False
+
+    @utils.call(admin.FlushStore) #pylint: disable=E1101
+    def flush_store(self):
+        assert False
