@@ -175,3 +175,19 @@ class CollapseTlogs(protocol.Message):
                             (success, message))
 
         yield protocol.Result(result)
+
+
+class FlushStore(protocol.Message):
+    '''"flush_store" message'''
+
+    __slots__ = ()
+
+    TAG = 0x0042 | protocol.Message.MASK
+    ARGS = ()
+    RETURN_TYPE = protocol.UNIT
+
+    DOC = utils.format_doc('''
+        Send a "flush_store" command to the server
+
+        This method instructs a node to flush its store to disk.
+    ''')
