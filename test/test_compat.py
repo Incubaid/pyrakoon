@@ -27,7 +27,7 @@ import unittest
 
 import nose
 
-from pyrakoon import compat, test
+from pyrakoon import compat, sequence, test
 
 LOGGER = logging.getLogger(__name__)
 
@@ -160,29 +160,34 @@ class TestCompatClient(unittest.TestCase, test.ArakoonEnvironmentMixin):
             'value1')
         self.assertFalse(client.exists('taskey'))
 
-        sequence = compat.Sequence()
-        sequence.addSet('skey', 'value0')
-        sequence.addDelete('skey')
-        sequence.addSet('skey', 'value1')
+        sequence_ = compat.Sequence()
+        sequence_.addSet('skey', 'value0')
+        sequence_.addDelete('skey')
+        sequence_.addSet('skey', 'value1')
 
         sequence2 = compat.Sequence()
         sequence2.addDelete('skey')
         sequence2.addSet('skey', 'value2')
         sequence2.addAssert('skey', 'value2')
         sequence2.addAssert('skey2', None)
-        sequence.addUpdate(sequence2)
+        sequence_.addUpdate(sequence2)
 
-        client.sequence(sequence)
-        client.sequence(sequence, sync=False)
-        client.sequence(sequence, sync=True)
+        client.sequence(sequence_)
+        client.sequence(sequence_, sync=False)
+        client.sequence(sequence_, sync=True)
 
         self.assertEquals(client.get('skey'), 'value2')
 
-        sequence = compat.Sequence()
-        sequence.addDelete('skey')
-        sequence.addDelete('skey2')
+        sequence_ = compat.Sequence()
+        sequence_.addDelete('skey')
+        sequence_.addDelete('skey2')
 
-        self.assertRaises(compat.ArakoonNotFound, client.sequence, sequence)
+        self.assertRaises(compat.ArakoonNotFound, client.sequence, sequence_)
+
+        # This is a bit out-of-place, but it's the only occasion where
+        # sequence-with-a-list can be tested easily
+        client._client.sequence([sequence.Set('skey', 'svalue3')])
+        self.assertEquals(client.get('skey'), 'svalue3')
 
     def test_get_key_count(self):
         client = self._create_client()

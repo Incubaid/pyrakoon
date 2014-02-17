@@ -1047,7 +1047,7 @@ class Sequence(Message):
         if len(steps) == 1 and isinstance(steps[0], sequence.Sequence):
             self._sequence = steps[0]
         else:
-            self._sequence = sequence.Sequence(*steps)
+            self._sequence = sequence.Sequence(steps)
 
         self._sync = sync
 
