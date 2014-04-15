@@ -89,6 +89,16 @@ class NoLongerMaster(ArakoonError):
 
     CODE = 0x0021
 
+class InconsistentRead(ArakoonError):
+    '''Inconsistent read'''
+
+    CODE = 0x0080
+
+class MaxConnections(ArakoonError):
+    '''Connection limit reached'''
+
+    CODE = 0x00fe
+
 class UnknownFailure(ArakoonError):
     '''Unknown failure'''
 
