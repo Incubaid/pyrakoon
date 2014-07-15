@@ -236,7 +236,7 @@ INT64 = SignedInteger(64, '<q')
 class Float(Type):
     '''Float type'''
 
-    PACKER = struct.Struct('d')
+    PACKER = struct.Struct('<d')
 
     def check(self, value):
         if not isinstance(value, float):
