@@ -643,6 +643,14 @@ class ArakoonUnknownNode(ArakoonException):
 
         ArakoonException.__init__(self, self._msg)
 
+class ArakoonNodeNotLocal(ArakoonException):
+    _msgF = "Unknown node identifier: %s"
+
+    def __init__(self, nodeId):
+        self._msg = ArakoonNodeNotLocal._msgF % nodeId
+
+        ArakoonException.__init__(self, self._msg)
+
 class ArakoonNotConnected(ArakoonException):
     _msgF = 'No connection available to node at \'%s:%s\''
 
