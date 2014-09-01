@@ -21,11 +21,14 @@
 
 '''Compatibility layer for the original Arakoon Python client'''
 
+import os.path
+import ssl
 import time
 import random
 import select
 import socket
 import logging
+import operator
 import functools
 import threading
 
@@ -800,30 +803,69 @@ ARA_CFG_NO_MASTER_RETRY = 60
 
 class ArakoonClientConfig :
 
-    def __init__ (self, clusterId, nodes):
+    def __init__ (self, clusterId, nodes,
+        tls=False, tls_ca_cert=None, tls_cert=None):
         """
         Constructor of an ArakoonClientConfig object
 
         The constructor takes one optional parameter 'nodes'.
         This is a dictionary containing info on the arakoon server nodes. It contains:
-
           - nodeids as keys
-          - (ips, tcp port) tuples as value
+          - ([ip], port) as values
         e.g. ::
-            cfg = ArakoonClientConfig ( {
-                    "myFirstNode" : ( ["127.0.0.1"], 4000 ),
-                    "mySecondNode" : (["127.0.0.1", "192.168.0.1"], 5000 ) ,
-                    "myThirdNode"  : (["127.0.0.1"], 6000 ) } )
-        Defaults to a single node running on localhost:4000
+            cfg = ArakoonClientConfig ('ricky',
+                { "myFirstNode" : (["127.0.0.1"], 4000 ),
+                  "mySecondNode" :(["127.0.0.1"], 5000 ),
+                  "myThirdNode"  :(["127.0.0.1","10.0.0.1"], 6000 )] })
+
+        Note: This client package only supports TLSv1 when connecting to nodes,
+        due to Python 2.x only supporting this TLS version. If your cluster is
+        configured to use another TLS version, you'll need to use another
+        Arakoon client which can work using a different socket interface which
+        supports different TLS versions.
 
         @type clusterId: string
         @param clusterId: name of the cluster
         @type nodes: dict
         @param nodes: A dictionary containing the locations for the server nodes
 
+        @param tls: Use a TLS connection
+            If `tls_ca_cert` is given, this *must* be `True`, otherwise a
+            `ValueError` will be raised.
+        @type tls: `bool`
+        @param tls_ca_cert: Path to CA certificate file
+            If set, this will be used to validate node certificates.
+        @type tls_ca_cert: `str`
+        @param tls_cert: Path of client certificate & key files
+            These should be passed as a tuple. When provided, `tls_ca_cert`
+            *must* be provided as well, otherwise a `ValueError` will be raised.
+        @type tls_cert: `(str, str)`
         """
         self._clusterId = clusterId
         self._nodes = nodes
+
+        if tls_ca_cert and not tls:
+            raise ValueError('tls_ca_cert passed, but tls is False')
+        if tls_cert and not tls_ca_cert:
+            raise ValueError('tls_cert passed, but tls_ca_cert not given')
+
+        if tls_ca_cert is not None and not os.path.isfile(tls_ca_cert):
+            raise ValueError('Invalid TLS CA cert path: %s' % tls_ca_cert)
+
+        if tls_cert:
+            cert, key = tls_cert
+            if not os.path.isfile(cert):
+                raise ValueError('Invalid TLS cert path: %s' % cert)
+            if not os.path.isfile(key):
+                raise ValueError('Invalid TLS key path: %s' % key)
+
+        self._tls = tls
+        self._tls_ca_cert = tls_ca_cert
+        self._tls_cert = tls_cert
+
+    tls = property(operator.attrgetter('_tls'))
+    tls_ca_cert = property(operator.attrgetter('_tls_ca_cert'))
+    tls_cert = property(operator.attrgetter('_tls_cert'))
 
     @staticmethod
     def getNoMasterRetryPeriod() :
@@ -1061,7 +1103,9 @@ class _ArakoonClient(object, client.AbstractClient, client.ClientMixin):
         if not connection:
             node_location = self._config.getNodeLocation(node_id)
             connection = _ClientConnection(node_location,
-                self._config.getClusterId())
+                self._config.getClusterId(),
+                self._config.tls, self._config.tls_ca_cert,
+                self._config.tls_cert)
             connection.connect()
 
             self._connections[node_id] = connection
@@ -1070,11 +1114,14 @@ class _ArakoonClient(object, client.AbstractClient, client.ClientMixin):
 
 
 class _ClientConnection(object):
-    def __init__(self, address, cluster_id):
+    def __init__(self, address, cluster_id, tls, tls_ca_cert, tls_cert):
         self._address = address
         self._connected = False
         self._socket = None
         self._cluster_id = cluster_id
+        self._tls = tls
+        self._tls_ca_cert = tls_ca_cert
+        self._tls_cert = tls_cert
 
     def connect(self):
         if self._socket:
@@ -1085,6 +1132,24 @@ class _ClientConnection(object):
             self._socket = socket.create_connection(self._address,
                 ArakoonClientConfig.getConnectionTimeout())
             self._socket.setblocking(False)
+
+            if self._tls:
+                kwargs = {
+                    'ssl_version': ssl.PROTOCOL_TLSv1,
+                    'cert_reqs': ssl.CERT_OPTIONAL,
+                    'do_handshake_on_connect': True
+                }
+
+                if self._tls_ca_cert:
+                    kwargs['cert_reqs'] = ssl.CERT_REQUIRED
+                    kwargs['ca_certs'] = self._tls_ca_cert
+
+                if self._tls_cert:
+                    cert, key = self._tls_cert
+                    kwargs['keyfile'] = key
+                    kwargs['certfile'] = cert
+
+                self._socket = ssl.wrap_socket(self._socket, **kwargs)
 
             data = protocol.build_prologue(self._cluster_id)
             self._socket.sendall(data)
@@ -1124,6 +1189,14 @@ class _ClientConnection(object):
         bytes_remaining = count
         result = []
         timeout = ArakoonClientConfig.getConnectionTimeout()
+
+        if isinstance(self._socket, ssl.SSLSocket):
+            pending = self._socket.pending()
+            if pending > 0:
+                tmp = self._socket.recv(min(bytes_remaining, pending))
+                result.append(tmp)
+                bytes_remaining = bytes_remaining - len(tmp)
+
 
         while bytes_remaining > 0:
             reads, _, _ = select.select([self._socket], [], [], timeout)
