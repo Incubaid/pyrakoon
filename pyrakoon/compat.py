@@ -842,6 +842,15 @@ class ArakoonClientConfig :
         @type tls_cert: `(str, str)`
         """
         self._clusterId = clusterId
+
+        sanatize = lambda s: \
+            s if not isinstance(s, str) \
+            else [a.strip() for a in s.split(',')]
+
+        nodes = dict(
+            (node_id, (sanatize(addr), port))
+            for (node_id, (addr, port)) in nodes.iteritems())
+
         self._nodes = nodes
 
         if tls_ca_cert and not tls:
