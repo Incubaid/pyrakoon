@@ -31,7 +31,7 @@ except ImportError:
 from twisted.internet import defer, error
 from twisted.trial import unittest
 
-from pyrakoon import client, errors, protocol, tx
+from pyrakoon import client, consistency, errors, protocol, tx
 
 bytes_ = lambda str_: (ord(c) for c in str_)
 
@@ -145,7 +145,8 @@ class TestTwistedClient(unittest.TestCase):
         '''Test a failing 'get' call'''
 
         expected = protocol.build_prologue(self.CLUSTER_ID)
-        expected += ''.join(protocol.Get(False, 'key').serialize())
+        expected += ''.join(
+            protocol.Get(consistency.CONSISTENT, 'key').serialize())
         to_send = ''.join(chr(i) for i in itertools.chain(
             (errors.NotFound.CODE, 0, 0, 0),
             (3, 0, 0, 0),

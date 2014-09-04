@@ -22,6 +22,7 @@ API
    pyrakoon.client.admin
    pyrakoon.errors
    pyrakoon.sequence
+   pyrakoon.consistency
    pyrakoon.tx
    pyrakoon.test
    pyrakoon.utils

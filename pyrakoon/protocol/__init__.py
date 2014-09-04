@@ -32,6 +32,7 @@ except ImportError:
     import StringIO
 
 from pyrakoon import utils
+import pyrakoon.consistency
 
 # Result codes
 RESULT_SUCCESS = 0x0000
@@ -229,6 +230,7 @@ class SignedInteger(Type):
         if abs(value) > self.MAX_INT:
             raise ValueError('Integer overflow')
 
+INT8 = SignedInteger(8, '<b')
 INT32 = SignedInteger(32, '<i')
 INT64 = SignedInteger(64, '<q')
 
@@ -648,10 +650,67 @@ class StatisticsType(Type):
 STATISTICS = StatisticsType()
 
 
+class Consistency(Type):
+    '''Consistency type'''
+
+    #pylint: disable=R0912
+
+    def check(self, value):
+        if value is not pyrakoon.consistency.CONSISTENT \
+            and value is not pyrakoon.consistency.INCONSISTENT \
+            and value is not None \
+            and not isinstance(value, pyrakoon.consistency.AtLeast):
+            raise ValueError('Invalid `consistency` value')
+
+    def serialize(self, value):
+        if value is pyrakoon.consistency.CONSISTENT or value is None:
+            yield '\0'
+        elif value is pyrakoon.consistency.INCONSISTENT:
+            yield '\1'
+        elif isinstance(value, pyrakoon.consistency.AtLeast):
+            yield '\2'
+            for data in INT64.serialize(value.i):
+                yield data
+        else:
+            raise ValueError
+
+    def receive(self):
+        tag_receiver = INT8.receive()
+        request = tag_receiver.next()
+
+        while isinstance(request, Request):
+            value = yield request
+            request = tag_receiver.send(value)
+
+        if not isinstance(request, Result):
+            raise TypeError
+
+        if request.value == 0:
+            yield Result(pyrakoon.consistency.CONSISTENT)
+        elif request.value == 1:
+            yield Result(pyrakoon.consistency.INCONSISTENT)
+        elif request.value == 2:
+            i_receiver = INT64.receive()
+            request = i_receiver.next()
+
+            while isinstance(request, Request):
+                value = yield request
+                request = i_receiver.send(value)
+
+            if not isinstance(request, Result):
+                raise TypeError
+
+            yield Result(pyrakoon.consistency.AtLeast(request.value))
+        else:
+            raise ValueError('Unknown consistency tag \'%d\'' % request.value)
+
+CONSISTENCY = Consistency()
+
+
 # Protocol message definitions
 
-ALLOW_DIRTY_ARG = ('allow_dirty', BOOL, False)
-'''Well-known `allow_dirty` argument''' #pylint: disable=W0105
+CONSISTENCY_ARG = ('consistency', CONSISTENCY, None)
+'''Well-known `consistency` argument''' #pylint: disable=W0105
 
 class Message(object):
     '''Base type for Arakoon command messages'''
@@ -813,10 +872,10 @@ class WhoMaster(Message):
 class Exists(Message):
     '''"exists" message'''
 
-    __slots__ = '_allow_dirty', '_key',
+    __slots__ = '_consistency', '_key',
 
     TAG = 0x0007 | Message.MASK
-    ARGS = ALLOW_DIRTY_ARG, ('key', STRING),
+    ARGS = CONSISTENCY_ARG, ('key', STRING),
     RETURN_TYPE = BOOL
 
     DOC = utils.format_doc('''
@@ -827,30 +886,30 @@ class Exists(Message):
 
         :param key: Key to test
         :type key: :class:`str`
-        :param allow_dirty: Allow reads from slave nodes
-        :type allow_dirty: :class:`bool`
+        :param consistency: Allow reads from stale nodes
+        :type consistency: :class:`pyrakoon.consistency.Consistency`
 
         :return: Whether the given key is set on the server
         :rtype: :class:`bool`
     ''')
 
-    def __init__(self, allow_dirty, key):
+    def __init__(self, consistency, key):
         super(Exists, self).__init__()
 
-        self._allow_dirty = allow_dirty
+        self._consistency = consistency
         self._key = key
 
     key = property(operator.attrgetter('_key'))
-    allow_dirty = property(operator.attrgetter('_allow_dirty'))
+    consistency = property(operator.attrgetter('_consistency'))
 
 
 class Get(Message):
     '''"get" message'''
 
-    __slots__ = '_allow_dirty', '_key',
+    __slots__ = '_consistency', '_key',
 
     TAG = 0x0008 | Message.MASK
-    ARGS = ALLOW_DIRTY_ARG, ('key', STRING),
+    ARGS = CONSISTENCY_ARG, ('key', STRING),
     RETURN_TYPE = STRING
 
     DOC = utils.format_doc('''
@@ -860,20 +919,20 @@ class Get(Message):
 
         :param key: Key to retrieve
         :type key: :class:`str`
-        :param allow_dirty: Allow reads from slave nodes
-        :type allow_dirty: :class:`bool`
+        :param consistency: Allow reads from stale nodes
+        :type consistency: :class:`pyrakoon.consistency.Consistency`
 
         :return: Value for the given key
         :rtype: :class:`str`
     ''')
 
-    def __init__(self, allow_dirty, key):
+    def __init__(self, consistency, key):
         super(Get, self).__init__()
 
-        self._allow_dirty = allow_dirty
+        self._consistency = consistency
         self._key = key
 
-    allow_dirty = property(operator.attrgetter('_allow_dirty'))
+    consistency = property(operator.attrgetter('_consistency'))
     key = property(operator.attrgetter('_key'))
 
 
@@ -936,10 +995,10 @@ class Delete(Message):
 class PrefixKeys(Message):
     '''"prefix_keys" message'''
 
-    __slots__ = '_allow_dirty', '_prefix', '_max_elements',
+    __slots__ = '_consistency', '_prefix', '_max_elements',
 
     TAG = 0x000c | Message.MASK
-    ARGS = ALLOW_DIRTY_ARG, ('prefix', STRING), ('max_elements', INT32, -1),
+    ARGS = CONSISTENCY_ARG, ('prefix', STRING), ('max_elements', INT32, -1),
     RETURN_TYPE = List(STRING)
 
     DOC = utils.format_doc('''
@@ -953,21 +1012,21 @@ class PrefixKeys(Message):
         :type prefix: :class:`str`
         :param max_elements: Maximum number of keys to return
         :type max_elements: :class:`int`
-        :param allow_dirty: Allow reads from slave nodes
-        :type allow_dirty: :class:`bool`
+        :param consistency: Allow reads from stale or stale nodes
+        :type consistency: :class:`pyrakoon.consistency.Consistency`
 
         :return: Keys matching the given prefix
         :rtype: iterable of :class:`str`
     ''')
 
-    def __init__(self, allow_dirty, prefix, max_elements):
+    def __init__(self, consistency, prefix, max_elements):
         super(PrefixKeys, self).__init__()
 
-        self._allow_dirty = allow_dirty
+        self._consistency = consistency
         self._prefix = prefix
         self._max_elements = max_elements
 
-    allow_dirty = property(operator.attrgetter('_allow_dirty'))
+    consistency = property(operator.attrgetter('_consistency'))
     prefix = property(operator.attrgetter('_prefix'))
     max_elements = property(operator.attrgetter('_max_elements'))
 
@@ -1069,11 +1128,11 @@ class Sequence(Message):
 class Range(Message):
     '''"Range" message'''
 
-    __slots__ = '_allow_dirty', '_begin_key', '_begin_inclusive', '_end_key', \
+    __slots__ = '_consistency', '_begin_key', '_begin_inclusive', '_end_key', \
         '_end_inclusive', '_max_elements',
 
     TAG = 0x000b | Message.MASK
-    ARGS = ALLOW_DIRTY_ARG, \
+    ARGS = CONSISTENCY_ARG, \
         ('begin_key', Option(STRING)), ('begin_inclusive', BOOL), \
         ('end_key', Option(STRING)), ('end_inclusive', BOOL), \
         ('max_elements', INT32, -1),
@@ -1098,26 +1157,26 @@ class Range(Message):
         :param end_inclusive: `end_key` is in- or exclusive
         :param max_elements: Maximum number of keys to return
         :type max_elements: :class:`int`
-        :param allow_dirty: Allow reads from slave nodes
-        :type allow_dirty: :class:`bool`
+        :param consistency: Allow reads from stale nodes
+        :type consistency: :class:`consistency.Concisistency`
 
         :return: List of matching keys
         :rtype: iterable of :class:`str`
     ''')
 
     #pylint: disable=R0913
-    def __init__(self, allow_dirty, begin_key, begin_inclusive,
+    def __init__(self, consistency, begin_key, begin_inclusive,
         end_key, end_inclusive, max_elements):
         super(Range, self).__init__()
 
-        self._allow_dirty = allow_dirty
+        self._consistency = consistency
         self._begin_key = begin_key
         self._begin_inclusive = begin_inclusive
         self._end_key = end_key
         self._end_inclusive = end_inclusive
         self._max_elements = max_elements
 
-    allow_dirty = property(operator.attrgetter('_allow_dirty'))
+    consistency = property(operator.attrgetter('_consistency'))
     begin_key = property(operator.attrgetter('_begin_key'))
     begin_inclusive = property(operator.attrgetter('_begin_inclusive'))
     end_key = property(operator.attrgetter('_end_key'))
@@ -1128,11 +1187,11 @@ class Range(Message):
 class RangeEntries(Message):
     '''"RangeEntries" message'''
 
-    __slots__ = '_allow_dirty', '_begin_key', '_begin_inclusive', '_end_key', \
+    __slots__ = '_consistency', '_begin_key', '_begin_inclusive', '_end_key', \
         '_end_inclusive', '_max_elements',
 
     TAG = 0x000f | Message.MASK
-    ARGS = ALLOW_DIRTY_ARG, \
+    ARGS = CONSISTENCY_ARG, \
         ('begin_key', Option(STRING)), ('begin_inclusive', BOOL), \
         ('end_key', Option(STRING)), ('end_inclusive', BOOL), \
         ('max_elements', INT32, -1),
@@ -1158,26 +1217,26 @@ class RangeEntries(Message):
         :type end_inclusive: :class:`bool`
         :param max_elements: Maximum number of items to return
         :type max_elements: :class:`int`
-        :param allow_dirty: Allow reads from slave nodes
-        :type allow_dirty: :class:`bool`
+        :param consistency: Allow reads from stale nodes
+        :type consistency: :class:`pyrakoon.consistency.Consistency`
 
         :return: List of matching (key, value) pairs
         :rtype: iterable of `(str, str)`
     ''')
 
     #pylint: disable=R0913
-    def __init__(self, allow_dirty, begin_key, begin_inclusive,
+    def __init__(self, consistency, begin_key, begin_inclusive,
         end_key, end_inclusive, max_elements):
         super(RangeEntries, self).__init__()
 
-        self._allow_dirty = allow_dirty
+        self._consistency = consistency
         self._begin_key = begin_key
         self._begin_inclusive = begin_inclusive
         self._end_key = end_key
         self._end_inclusive = end_inclusive
         self._max_elements = max_elements
 
-    allow_dirty = property(operator.attrgetter('_allow_dirty'))
+    consistency = property(operator.attrgetter('_consistency'))
     begin_key = property(operator.attrgetter('_begin_key'))
     begin_inclusive = property(operator.attrgetter('_begin_inclusive'))
     end_key = property(operator.attrgetter('_end_key'))
@@ -1188,10 +1247,10 @@ class RangeEntries(Message):
 class MultiGet(Message):
     '''"multi_get" message'''
 
-    __slots__ = '_allow_dirty', '_keys',
+    __slots__ = '_consistency', '_keys',
 
     TAG = 0x0011 | Message.MASK
-    ARGS = ALLOW_DIRTY_ARG, ('keys', List(STRING)),
+    ARGS = CONSISTENCY_ARG, ('keys', List(STRING)),
     RETURN_TYPE = List(STRING)
 
     DOC = utils.format_doc('''
@@ -1201,30 +1260,30 @@ class MultiGet(Message):
 
         :param keys: Keys to look up
         :type keys: iterable of :class:`str`
-        :param allow_dirty: Allow reads from slave nodes
-        :type allow_dirty: :class:`bool`
+        :param consistency: Allow reads from stale nodes
+        :type consistency: :class:`bool`
 
         :return: Requested values
         :rtype: iterable of :class:`str`
     ''')
 
-    def __init__(self, allow_dirty, keys):
+    def __init__(self, consistency, keys):
         super(MultiGet, self).__init__()
 
-        self._allow_dirty = allow_dirty
+        self._consistency = consistency
         self._keys = keys
 
-    allow_dirty = property(operator.attrgetter('_allow_dirty'))
+    consistency = property(operator.attrgetter('_consistency'))
     keys = property(operator.attrgetter('_keys'))
 
 
 class MultiGetOption(Message):
     '''"multi_get_option" message'''
 
-    __slots__ = '_allow_dirty', '_keys',
+    __slots__ = '_consistency', '_keys',
 
     TAG = 0x0031 | Message.MASK
-    ARGS = ALLOW_DIRTY_ARG, ('keys', List(STRING)),
+    ARGS = CONSISTENCY_ARG, ('keys', List(STRING)),
     RETURN_TYPE = Array(Option(STRING))
 
     DOC = utils.format_doc('''
@@ -1234,20 +1293,20 @@ class MultiGetOption(Message):
 
         :param keys: Keys to look up
         :type keys: iterable of :class:`str`
-        :param allow_dirty: Allow reads from slave nodes
-        :type allow_dirty: :class:`bool`
+        :param consistency: Allow reads from stale nodes
+        :type consistency: :class:`pyrakoon.consistency.Consistency`
 
         :return: Requested values
         :rtype: iterable of (`str` or `None`)
     ''')
 
-    def __init__(self, allow_dirty, keys):
+    def __init__(self, consistency, keys):
         super(MultiGetOption, self).__init__()
 
-        self._allow_dirty = allow_dirty
+        self._consistency = consistency
         self._keys = keys
 
-    allow_dirty = property(operator.attrgetter('_allow_dirty'))
+    consistency = property(operator.attrgetter('_consistency'))
     keys = property(operator.attrgetter('_keys'))
 
 
@@ -1357,10 +1416,10 @@ class Confirm(Message):
 class Assert(Message):
     '''"assert" message'''
 
-    __slots__ = '_allow_dirty', '_key', '_value',
+    __slots__ = '_consistency', '_key', '_value',
 
     TAG = 0x0016 | Message.MASK
-    ARGS = ALLOW_DIRTY_ARG, ('key', STRING), ('value', Option(STRING)),
+    ARGS = CONSISTENCY_ARG, ('key', STRING), ('value', Option(STRING)),
     RETURN_TYPE = UNIT
 
     DOC = utils.format_doc('''
@@ -1373,18 +1432,18 @@ class Assert(Message):
         :type key: :class:`str`
         :param value: Optional value to compare
         :type value: :class:`str` or :data:`None`
-        :param allow_dirty: Allow reads from slave nodes
-        :type allow_dirty: :class:`bool`
+        :param consistency: Allow reads from stale nodes
+        :type consistency: :class:`pyrakoon.consistency.Consistency`
     ''')
 
-    def __init__(self, allow_dirty, key, value):
+    def __init__(self, consistency, key, value):
         super(Assert, self).__init__()
 
-        self._allow_dirty = allow_dirty
+        self._consistency = consistency
         self._key = key
         self._value = value
 
-    allow_dirty = property(operator.attrgetter('_allow_dirty'))
+    consistency = property(operator.attrgetter('_consistency'))
     key = property(operator.attrgetter('_key'))
     value = property(operator.attrgetter('_value'))
 
@@ -1392,10 +1451,10 @@ class Assert(Message):
 class AssertExists(Message):
     '''"assert_exists" message'''
 
-    __slots__ = '_allow_dirty', '_key',
+    __slots__ = '_consistency', '_key',
 
     TAG = 0x0029 | Message.MASK
-    ARGS = ALLOW_DIRTY_ARG, ('key', STRING),
+    ARGS = CONSISTENCY_ARG, ('key', STRING),
     RETURN_TYPE = UNIT
 
     DOC = utils.format_doc('''
@@ -1406,28 +1465,28 @@ class AssertExists(Message):
 
         :param key: Key to check
         :type key: :class:`str`
-        :param allow_dirty: Allow reads from slave nodes
-        :type allow_dirty: :class:`bool`
+        :param consistency: Allow reads from stale nodes
+        :type consistency: :class:`pyrakoon.consistency.Consistency`
     ''')
 
-    def __init__(self, allow_dirty, key):
+    def __init__(self, consistency, key):
         super(AssertExists, self).__init__()
 
-        self._allow_dirty = allow_dirty
+        self._consistency = consistency
         self._key = key
 
-    allow_dirty = property(operator.attrgetter('_allow_dirty'))
+    consistency = property(operator.attrgetter('_consistency'))
     key = property(operator.attrgetter('_key'))
 
 
 class RevRangeEntries(Message):
     '''"rev_range_entries" message'''
 
-    __slots__ = '_allow_dirty', '_begin_key', '_begin_inclusive', '_end_key', \
+    __slots__ = '_consistency', '_begin_key', '_begin_inclusive', '_end_key', \
         '_end_inclusive', '_max_elements',
 
     TAG = 0x0023 | Message.MASK
-    ARGS = ALLOW_DIRTY_ARG, \
+    ARGS = CONSISTENCY_ARG, \
         ('begin_key', Option(STRING)), ('begin_inclusive', BOOL), \
         ('end_key', Option(STRING)), ('end_inclusive', BOOL), \
         ('max_elements', INT32, -1),
@@ -1454,26 +1513,26 @@ class RevRangeEntries(Message):
         :type end_inclusive: :class:`bool`
         :param max_elements: Maximum number of items to return
         :type max_elements: :class:`int`
-        :param allow_dirty: Allow reads from slave nodes
-        :type allow_dirty: :class:`bool`
+        :param consistency: Allow reads from stale nodes
+        :type consistency: :class:`pyrakoon.consistency.Consistency`
 
         :return: List of matching (key, value) pairs
         :rtype: iterable of `(str, str)`
     ''')
 
     #pylint: disable=R0913
-    def __init__(self, allow_dirty, begin_key, begin_inclusive,
+    def __init__(self, consistency, begin_key, begin_inclusive,
         end_key, end_inclusive, max_elements):
         super(RevRangeEntries, self).__init__()
 
-        self._allow_dirty = allow_dirty
+        self._consistency = consistency
         self._begin_key = begin_key
         self._begin_inclusive = begin_inclusive
         self._end_key = end_key
         self._end_inclusive = end_inclusive
         self._max_elements = max_elements
 
-    allow_dirty = property(operator.attrgetter('_allow_dirty'))
+    consistency = property(operator.attrgetter('_consistency'))
     begin_key = property(operator.attrgetter('_begin_key'))
     begin_inclusive = property(operator.attrgetter('_begin_inclusive'))
     end_key = property(operator.attrgetter('_end_key'))
@@ -1626,17 +1685,17 @@ def sanity_check():
         if inspect.isclass(value) \
             and getattr(value, '__module__', None) == __name__:
 
-            # A `Message` which has `ALLOW_DIRTY_ARG` in its `ARGS` must have
-            # an `allow_dirty` attribute, the constructor must take such
-            # argument, and if `__slots__` is defined, there should be an
-            # `_allow_dirty` field
+            # A `Message` which has `CONSISTENCY_ARG` in its `ARGS` must have
+            # a `consistency` attributes, the constructor must take such
+            # argument, and if `__slots__` is defined, there should be
+            # a `_consistency` field.
             if issubclass(value, Message):
-                if ALLOW_DIRTY_ARG in (value.ARGS or []): #pylint: disable=C0325
-                    assert hasattr(value, 'allow_dirty')
+                if CONSISTENCY_ARG in (value.ARGS or []): #pylint: disable=C0325
+                    assert hasattr(value, 'consistency')
                     argspec = inspect.getargspec(value.__init__)
-                    assert 'allow_dirty' in argspec.args
+                    assert 'consistency' in argspec.args
                     if hasattr(value, '__slots__'):
-                        assert '_allow_dirty' in value.__slots__
+                        assert '_consistency' in value.__slots__
 
 sanity_check()
 del sanity_check
