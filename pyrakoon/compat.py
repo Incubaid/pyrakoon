@@ -90,6 +90,8 @@ def _validate_signature_helper(fun, *args):
             return all(isinstance(value, str) for value in arg)
         elif arg_type == 'sequence':
             return isinstance(arg, Sequence)
+        elif arg_type == 'consistency':
+            return isinstance(arg, Consistency)
         else:
             raise RuntimeError('Invalid argument type supplied: %s' % arg_type)
 
@@ -221,9 +223,9 @@ class ArakoonClient(object):
 
         return self._client.exists(key)
 
-    @utils.update_argspec('self', 'key')
+    @utils.update_argspec('self', 'key', ('consistency', None))
     @_convert_exceptions
-    @_validate_signature('string')
+    @_validate_signature('string', 'consistency')
     def get(self, key, consistency=None):
         """
         Retrieve a single value from the store.
