@@ -224,7 +224,7 @@ class ArakoonClient(object):
     @utils.update_argspec('self', 'key')
     @_convert_exceptions
     @_validate_signature('string')
-    def get(self, key):
+    def get(self, key, consistency=None):
         """
         Retrieve a single value from the store.
 
@@ -237,7 +237,19 @@ class ArakoonClient(object):
         @return: The value associated with the given key
         """
 
-        return self._client.get(key)
+        import pyrakoon.consistency
+
+        if consistency:
+            if isinstance(consistency, Consistent):
+                consistency = pyrakoon.consistency.CONSISTENT
+            elif isinstance(consistency, NoGuarantee):
+                consistency = pyrakoon.consistency.INCONSISTENT
+            elif isinstance(consistency, AtLeast):
+                consistency = pyrakoon.consistency.AtLeast(consistency.i)
+            else:
+                raise ValueError('consistency')
+
+        return self._client.get(key, consistency=consistency)
 
     @utils.update_argspec('self', 'key', 'value')
     @_convert_exceptions
