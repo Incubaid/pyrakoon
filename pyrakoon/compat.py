@@ -27,6 +27,7 @@ import time
 import random
 import select
 import socket
+import inspect
 import logging
 import operator
 import functools
@@ -90,20 +91,19 @@ def _validate_signature_helper(fun, *args):
             return all(isinstance(value, str) for value in arg)
         elif arg_type == 'sequence':
             return isinstance(arg, Sequence)
-        elif arg_type == 'consistency':
-            return isinstance(arg, Consistency)
+        elif arg_type == 'consistency_option':
+            return isinstance(arg, Consistency) or arg is None
         else:
             raise RuntimeError('Invalid argument type supplied: %s' % arg_type)
 
     @functools.wraps(fun)
     def wrapped(**kwargs):
         new_args = [None] * (len(args) + 1)
-        missing_args = fun.func_code.co_varnames
+        missing_args = inspect.getargs(fun.func_code).args
 
-        for missing_arg in missing_args:
+        for (idx, missing_arg) in enumerate(missing_args):
             if missing_arg in kwargs:
-                pos = fun.func_code.co_varnames.index(missing_arg)
-                new_args[pos] = kwargs[missing_arg]
+                new_args[idx] = kwargs[missing_arg]
                 del kwargs[missing_arg]
 
         if kwargs:
@@ -116,7 +116,7 @@ def _validate_signature_helper(fun, *args):
         for arg, arg_type in zip(new_args[1:], args):
             if not validate(arg, arg_type):
                 error_key_values.append(
-                    (fun.func_code.co_varnames[i + 1], new_args[i]))
+                    (missing_args[i + 1], new_args[i + 1]))
             i += 1
 
         if error_key_values:
@@ -225,7 +225,7 @@ class ArakoonClient(object):
 
     @utils.update_argspec('self', 'key', ('consistency', None))
     @_convert_exceptions
-    @_validate_signature('string', 'consistency')
+    @_validate_signature('string', 'consistency_option')
     def get(self, key, consistency=None):
         """
         Retrieve a single value from the store.
