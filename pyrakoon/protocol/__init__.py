@@ -1678,6 +1678,24 @@ class GetCurrentState(Message):
     ''')
 
 
+class GetTxID(Message):
+    '''"get_txid" message'''
+
+    __slots__ = ()
+    TAG = 0x0043 | Message.MASK
+    ARGS = ()
+    RETURN_TYPE = CONSISTENCY
+
+    DOC = utils.format_doc('''
+        Send a "get_txid" command to the server
+
+        This call returns the current transaction ID (if available) of the node.
+
+        :return: Transaction ID of the node
+        :rtype: :class:`pyrakoon.consistency.Consistency`
+    ''')
+
+
 def sanity_check():
     '''Sanity check for some invariants on types defined in this module'''
 

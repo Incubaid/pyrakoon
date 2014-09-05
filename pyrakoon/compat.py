@@ -32,7 +32,7 @@ import operator
 import functools
 import threading
 
-from pyrakoon import client, errors, protocol, sequence, utils
+from pyrakoon import client, consistency, errors, protocol, sequence, utils
 
 __docformat__ = 'epytext'
 
@@ -147,6 +147,25 @@ def _convert_exceptions(fun):
             raise new_exception
 
     return wrapped
+
+
+class Consistency:
+    pass
+
+class Consistent(Consistency):
+    def __str__(self):
+        return 'Consistent'
+
+class NoGuarantee(Consistency):
+    def __str__(self):
+        return 'NoGuarantee'
+
+class AtLeast(Consistency):
+    def __init__(self, i):
+        self.i = i
+
+    def __str__(self):
+        return 'AtLeast(%i)' % self.i
 
 
 class ArakoonClient(object):
@@ -613,6 +632,19 @@ class ArakoonClient(object):
         """
 
         return self._client.delete_prefix(prefix)
+
+    @utils.update_argspec('self')
+    @_convert_exceptions
+    def get_txid(self):
+        res = self._client.get_tx_id()
+        if res is consistency.CONSISTENT:
+            return Consistent()
+        elif res is consistency.INCONSISTENT:
+            return NoGuarantee()
+        elif isinstance(res, consistency.AtLeast):
+            return AtLeast(res.i)
+        else:
+            raise ValueError('Unknown result: %r' % res)
 
 
     def makeSequence(self):
