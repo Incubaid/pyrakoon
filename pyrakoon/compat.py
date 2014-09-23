@@ -667,6 +667,9 @@ class ArakoonClient(object):
     def dropConnections(self):
         return self._client.drop_connections()
 
+    _masterId = property(
+        lambda self: self._client.master_id,
+        lambda self, v: setattr(self._client, 'master_id', v))
 
 # Exception types
 # This is mostly a copy from the ArakoonExceptions module, with some cosmetic
