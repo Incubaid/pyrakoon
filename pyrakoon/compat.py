@@ -717,6 +717,11 @@ class ArakoonNoMasterResult(ArakoonException):
 class ArakoonNodeNotMaster(ArakoonException):
     _msg = 'Cannot perform operation on non-master node'
 
+class ArakoonNodeNoLongerMaster(ArakoonException):
+    _msg = '''
+Operation might or might not be performed on node which is no longer the master
+    '''.strip()
+
 class ArakoonSocketException(ArakoonException):
     pass
 
@@ -776,6 +781,10 @@ def _convert_exception(exc):
         return exc_
     elif isinstance(exc, errors.NotMaster):
         exc_ = ArakoonNodeNotMaster(exc.message)
+        exc_.inner = exc
+        return exc_
+    elif isinstance(exc, errors.NoLongerMaster):
+        exc_ = ArakoonNodeNoLongerMaster(exc.message)
         exc_.inner = exc
         return exc_
     elif isinstance(exc, (TypeError, ValueError)):
