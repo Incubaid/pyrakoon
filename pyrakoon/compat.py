@@ -934,6 +934,9 @@ class ArakoonClientConfig :
         """
         return ARA_CFG_NO_MASTER_RETRY
 
+    def getNodeLocations(self, nodeId):
+        return self._nodes[nodeId]
+
     def getNodeLocation(self, nodeId):
         """
         Retrieve location of the server node with give node identifier
@@ -947,7 +950,7 @@ class ArakoonClientConfig :
         @rtype: pair(string,int)
         @return: Returns a pair with the nodes hostname or ip and the tcp port, e.g. ("127.0.0.1", 4000)
         """
-        ips, port = self._nodes[nodeId]
+        ips, port = self.getNodeLocations(nodeId)
         return (ips[0], port)
 
 
