@@ -722,6 +722,9 @@ class ArakoonNodeNoLongerMaster(ArakoonException):
 Operation might or might not be performed on node which is no longer the master
     '''.strip()
 
+class ArakoonGoingDown(ArakoonException):
+    _msg = "Server is going down"
+
 class ArakoonSocketException(ArakoonException):
     pass
 
@@ -785,6 +788,10 @@ def _convert_exception(exc):
         return exc_
     elif isinstance(exc, errors.NoLongerMaster):
         exc_ = ArakoonNodeNoLongerMaster(exc.message)
+        exc_.inner = exc
+        return exc_
+    elif isinstance(exc, errors.GoingDown):
+        exc_ = ArakoonGoingDown(exc.message)
         exc_.inner = exc
         return exc_
     elif isinstance(exc, (TypeError, ValueError)):
