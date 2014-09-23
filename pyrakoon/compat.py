@@ -717,19 +717,22 @@ class ArakoonNoMasterResult(ArakoonException):
 class ArakoonNodeNotMaster(ArakoonException):
     _msg = 'Cannot perform operation on non-master node'
 
-class ArakoonSockReadNoBytes(ArakoonException):
+class ArakoonSocketException(ArakoonException):
+    pass
+
+class ArakoonSockReadNoBytes(ArakoonSocketException):
     _msg = 'Could not read a single byte from the socket. Aborting.'
 
-class ArakoonSockNotReadable(ArakoonException):
+class ArakoonSockNotReadable(ArakoonSocketException):
     _msg = 'Socket is not readable. Aborting.'
 
-class ArakoonSockRecvError(ArakoonException):
+class ArakoonSockRecvError(ArakoonSocketException):
     _msg = 'Error while receiving data from socket'
 
-class ArakoonSockRecvClosed(ArakoonException):
+class ArakoonSockRecvClosed(ArakoonSocketException):
     _msg = 'Cannot receive on a not-connected socket'
 
-class ArakoonSockSendError(ArakoonException):
+class ArakoonSockSendError(ArakoonSocketException):
     _msg = 'Error while sending data on socket'
 
 class ArakoonInvalidArguments(ArakoonException, TypeError):
